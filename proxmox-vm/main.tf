@@ -9,6 +9,7 @@ resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
   agent {
     # read 'Qemu guest agent' section, change to true only when ready
     enabled = true
+		timeout = "2m"
   }
   # if agent is not enabled, the VM may not be able to shutdown properly, and may need to be forced off
   stop_on_destroy = true
@@ -46,13 +47,14 @@ resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
             }
         }
 
-    user_account {
-      keys     = [trimspace(tls_private_key.ubuntu_vm_key.public_key_openssh)]
-      password = random_password.ubuntu_vm_password.result
-      username = "ubuntu"
-    }
+    # user_account {
+    #   keys     = [trimspace(tls_private_key.ubuntu_vm_key.public_key_openssh)]
+    #   password = random_password.ubuntu_vm_password.result
+    #   username = "ubuntu"
+    # }
 
-    # user_data_file_id = proxmox_virtual_environment_file.cloud_config.id
+    user_data_file_id = proxmox_virtual_environment_file.cloud_config.id
+
   }
 
   network_device {
@@ -96,16 +98,32 @@ resource "tls_private_key" "ubuntu_vm_key" {
   rsa_bits  = 2048
 }
 
-output "ubuntu_vm_password" {
-  value     = random_password.ubuntu_vm_password.result
-  sensitive = true
+resource "proxmox_virtual_environment_file" "cloud_config" {
+  content_type = "snippets"
+  datastore_id = "local"
+  node_name    = "proxmox"
+
+  source_raw {
+    data = <<-EOF
+#cloud-config
+package_update: true
+
+users:
+  - name: ubuntu
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ${trimspace(tls_private_key.ubuntu_vm_key.public_key_openssh)}
+
+packages:
+  - qemu-guest-agent
+
+runcmd:
+  - systemctl enable qemu-guest-agent
+  - systemctl start qemu-guest-agent
+EOF
+
+    file_name = "cloud-config.yaml"
+  }
 }
 
-output "ubuntu_vm_private_key" {
-  value     = tls_private_key.ubuntu_vm_key.private_key_pem
-  sensitive = true
-}
-
-output "ubuntu_vm_public_key" {
-  value = tls_private_key.ubuntu_vm_key.public_key_openssh
-}

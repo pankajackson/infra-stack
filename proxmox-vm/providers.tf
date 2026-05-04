@@ -9,8 +9,13 @@ terraform {
 
 provider "proxmox" {
     endpoint    = "https://<PROXMOX_HOST>:<PROXMOX_PORT>"
-    api_token   = "<PROXMOX_API_TOKEN>"
+    username = "<PROXMOX_USER>"
+    password = "<PASSWORD>"
     insecure    = true
+
+    ssh {
+        agent = true
+    }
 }
 
 provider "random" {}
