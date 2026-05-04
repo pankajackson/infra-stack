@@ -9,7 +9,10 @@ resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
   agent {
     # read 'Qemu guest agent' section, change to true only when ready
     enabled = true
-		timeout = "2m"
+		timeout = "5m"
+		wait_for_ip {
+			ipv4 = true
+		}
   }
   # if agent is not enabled, the VM may not be able to shutdown properly, and may need to be forced off
   stop_on_destroy = true
@@ -42,7 +45,7 @@ resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
 
     ip_config {
             ipv4 {
-                address = "192.168.1.63/24"
+                address = "192.168.1.60/24"
                 gateway = "192.168.1.1"
             }
         }
@@ -104,24 +107,9 @@ resource "proxmox_virtual_environment_file" "cloud_config" {
   node_name    = "proxmox"
 
   source_raw {
-    data = <<-EOF
-#cloud-config
-package_update: true
-
-users:
-  - name: ubuntu
-    sudo: ALL=(ALL) NOPASSWD:ALL
-    shell: /bin/bash
-    ssh_authorized_keys:
-      - ${trimspace(tls_private_key.ubuntu_vm_key.public_key_openssh)}
-
-packages:
-  - qemu-guest-agent
-
-runcmd:
-  - systemctl enable qemu-guest-agent
-  - systemctl start qemu-guest-agent
-EOF
+    data = templatefile("${path.module}/cloud-init.yaml", {
+        ssh_public_key = trimspace(tls_private_key.ubuntu_vm_key.public_key_openssh)
+		})
 
     file_name = "cloud-config.yaml"
   }

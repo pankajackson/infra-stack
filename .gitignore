@@ -47,3 +47,4 @@ terraform.rc
 .dev/
 *.secret
 *.secrets
+*.pem
