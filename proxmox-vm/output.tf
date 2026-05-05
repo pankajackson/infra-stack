@@ -11,3 +11,8 @@ output "ubuntu_vm_private_key" {
 output "ubuntu_vm_public_key" {
   value = tls_private_key.ubuntu_vm_key.public_key_openssh
 }
+
+output "k3s_token" {
+  value     = random_id.k3s_token.hex
+  sensitive = true
+}

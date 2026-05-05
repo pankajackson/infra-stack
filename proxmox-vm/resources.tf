@@ -33,3 +33,6 @@ resource "proxmox_virtual_environment_file" "cloud_config" {
   }
 }
 
+resource "random_id" "k3s_token" {
+  byte_length = 32
+}

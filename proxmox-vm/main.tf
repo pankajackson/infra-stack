@@ -2,9 +2,8 @@ resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
   name        = "terraform-provider-proxmox-ubuntu-vm"
   description = "Managed by Terraform"
   tags        = ["terraform", "ubuntu"]
-
-  node_name = "proxmox"
-  vm_id     = 4321
+  node_name   = "proxmox"
+  vm_id       = 4321
 
   agent {
     # read 'Qemu guest agent' section, change to true only when ready
