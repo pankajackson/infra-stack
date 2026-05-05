@@ -26,6 +26,14 @@ packages:
   - python3-pip
 
 write_files:
+  - path: /usr/local/bin/k3s-shared-storage-setup.sh
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      mkdir -p /lxa_k8s
+      echo "192.168.1.4:/volume1/infra-storage/lxa_k8s /lxa_k8s nfs defaults,_netdev 0 0" >> /etc/fstab
+      mount -a
+
   - path: /usr/local/bin/k3s-master-setup.sh
     permissions: "0755"
     content: |
@@ -51,12 +59,13 @@ write_files:
 
       echo "=== Preparing Join Command ==="
       TOKEN="${k3s_token}"
-      mkdir -p /lxa_k8s
+      config_store_path="/lxa_k8s/${cluster_name}"
+      mkdir -p $${config_store_path}
 
       JOIN_CMD="curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=${k3s_version} sh -s - agent --token=$${TOKEN} --server https://$${MASTER_IP}:6443 ${other_flags}"
 
-      echo "$JOIN_CMD" > /lxa_k8s/join.sh
-      chmod +x /lxa_k8s/join.sh
+      echo "$JOIN_CMD" > $${config_store_path}/join.sh
+      chmod +x $${config_store_path}/join.sh
 
       echo "$JOIN_CMD"
 
@@ -94,11 +103,12 @@ write_files:
       EOF
 
       echo "=== Setting up Kube config ==="
-      k3s kubectl config view --raw > /lxa_k8s/kubeconfig
+      k3s kubectl config view --raw > $${config_store_path}/kubeconfig
       mkdir -p /root/.kube
       k3s kubectl config view --raw > /root/.kube/config
 
 runcmd:
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent
+  - /usr/local/bin/k3s-shared-storage-setup.sh
   - /usr/local/bin/k3s-master-setup.sh
