@@ -18,7 +18,7 @@ resource "tls_private_key" "ubuntu_vm_key" {
   rsa_bits  = 2048
 }
 
-resource "proxmox_virtual_environment_file" "master_cloud_config" {
+resource "proxmox_virtual_environment_file" "master_cloud_init" {
   content_type = "snippets"
   datastore_id = "local"
   node_name    = "proxmox"
@@ -35,9 +35,31 @@ resource "proxmox_virtual_environment_file" "master_cloud_config" {
       other_flags    = ""
     })
 
-    file_name = "cloud-init.yaml"
+    file_name = "k8s-master-cloud-init.yaml"
   }
 }
+
+resource "proxmox_virtual_environment_file" "worker_cloud_init" {
+  content_type = "snippets"
+  datastore_id = "local"
+  node_name    = "proxmox"
+
+  source_raw {
+    data = templatefile("${path.module}/templates/worker-cloud-init.yaml", {
+      ssh_public_key = trimspace(tls_private_key.ubuntu_vm_key.public_key_openssh),
+      ssh_password   = random_password.ubuntu_vm_password.result,
+      k3s_token      = random_id.k3s_token.hex,
+      k3s_version    = "v1.30.0+k3s1",
+      cluster_name   = "lab",
+      master_address = "192.168.1.60",
+      install_flags  = "--disable local-storage --disable traefik --disable metrics-server",
+      other_flags    = ""
+    })
+
+    file_name = "k8s-worker-cloud-init.yaml"
+  }
+}
+
 
 resource "random_id" "k3s_token" {
   byte_length = 32

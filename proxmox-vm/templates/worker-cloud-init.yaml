@@ -1,0 +1,88 @@
+#cloud-config
+package_update: true
+ssh_pwauth: true
+hostname: lxa-${cluster_name}-worker
+
+users:
+  - name: ubuntu
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: false
+    ssh_authorized_keys:
+      - ${ssh_public_key}
+
+chpasswd:
+  list: |
+    ubuntu:${ssh_password}
+  expire: false
+
+packages:
+  - qemu-guest-agent
+  - curl
+  - jq
+  - net-tools
+  - iputils-ping
+  - nfs-common
+  - yq
+  - python3-pip
+
+write_files:
+  - path: /usr/local/bin/k3s-shared-storage-setup.sh
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      mkdir -p /lxa_k8s
+      echo "192.168.1.4:/volume1/infra-storage/lxa_k8s /lxa_k8s nfs defaults,_netdev 0 0" >> /etc/fstab
+      mount -a
+
+  - path: /usr/local/bin/k3s-worker-setup.sh
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      set -e
+      config_store_path="/lxa_k8s/${cluster_name}"
+      JOIN_SCRIPT_PATH="$${config_store_path}/join.sh"
+      KUBECONFIG_SRC="$${config_store_path}/kubeconfig"
+      KUBECONFIG_DEST="$HOME/.kube/config"
+      WAIT_INTERVAL=2
+
+      echo "=== Setting up k3s config ==="
+      mkdir -p /etc/rancher/k3s
+      cat <<EOF > /etc/rancher/k3s/config.yaml
+      node-name: $(hostname)
+      EOF
+
+      wait_for_join_script() {
+          echo "=== Waiting for join script ==="
+          while [ ! -f "$JOIN_SCRIPT_PATH" ]; do
+              sleep "$WAIT_INTERVAL"
+          done
+      }
+
+      wait_for_kubeconfig() {
+          echo "=== Waiting for kubeconfig ==="
+          while [ ! -f "$KUBECONFIG_SRC" ]; do
+              sleep "$WAIT_INTERVAL"
+          done
+      }
+
+      setup_kubeconfig() {
+          mkdir -p "$(dirname "$KUBECONFIG_DEST")"
+          cp "$KUBECONFIG_SRC" "$KUBECONFIG_DEST"
+      }
+
+      echo "=== Waiting for kubeconfig ==="
+      wait_for_kubeconfig
+      setup_kubeconfig
+
+      echo "=== Waiting for join script ==="
+      wait_for_join_script
+
+      echo "=== Joining cluster ==="
+      bash "$JOIN_SCRIPT_PATH"
+
+runcmd:
+  - systemctl enable qemu-guest-agent
+  - systemctl start qemu-guest-agent
+  - /usr/local/bin/k3s-shared-storage-setup.sh
+  - /usr/local/bin/k3s-worker-setup.sh
