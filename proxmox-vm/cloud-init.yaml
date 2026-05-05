@@ -7,11 +7,12 @@ users:
     sudo: ALL=(ALL) NOPASSWD:ALL
     shell: /bin/bash
     lock_passwd: false
-    passwd: ${ssh_password_hash}
     ssh_authorized_keys:
       - ${ssh_public_key}
 
 chpasswd:
+  list: |
+    ubuntu:${ssh_password}
   expire: false
 
 packages:
