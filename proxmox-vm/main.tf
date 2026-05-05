@@ -37,24 +37,22 @@ resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
     datastore_id = "local-lvm"
     import_from  = proxmox_download_file.latest_ubuntu_22_jammy_qcow2_img.id
     interface    = "scsi0"
+    size = 20
+  }
+
+  disk {
+    datastore_id = "local-lvm"
+    interface    = "scsi1"
+    size = 30
   }
 
   initialization {
-    # uncomment and specify the datastore for cloud-init disk if default `local-lvm` is not available
-    # datastore_id = "local-lvm"
-
     ip_config {
-            ipv4 {
-                address = "192.168.1.60/24"
-                gateway = "192.168.1.1"
-            }
-        }
-
-    # user_account {
-    #   keys     = [trimspace(tls_private_key.ubuntu_vm_key.public_key_openssh)]
-    #   password = random_password.ubuntu_vm_password.result
-    #   username = "ubuntu"
-    # }
+      ipv4 {
+          address = "192.168.1.60/24"
+          gateway = "192.168.1.1"
+      }
+    }
 
     user_data_file_id = proxmox_virtual_environment_file.cloud_config.id
 
