@@ -108,7 +108,8 @@ resource "proxmox_virtual_environment_file" "cloud_config" {
 
   source_raw {
     data = templatefile("${path.module}/cloud-init.yaml", {
-        ssh_public_key = trimspace(tls_private_key.ubuntu_vm_key.public_key_openssh)
+        ssh_public_key = trimspace(tls_private_key.ubuntu_vm_key.public_key_openssh),
+        ssh_password_hash = bcrypt(random_password.ubuntu_vm_password.result)
 		})
 
     file_name = "cloud-config.yaml"
