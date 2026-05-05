@@ -41,8 +41,8 @@ write_files:
       #!/bin/bash
       set -e
       config_store_path="/lxa_k8s/${cluster_name}"
-      JOIN_SCRIPT_PATH="$${config_store_path}/join.sh"
-      KUBECONFIG_SRC="$${config_store_path}/kubeconfig"
+      JOIN_SCRIPT_PATH="$${config_store_path}/join-${cluster_id}.sh"
+      KUBECONFIG_SRC="$${config_store_path}/kubeconfig-${cluster_id}"
       KUBECONFIG_DEST="$HOME/.kube/config"
       WAIT_INTERVAL=2
 

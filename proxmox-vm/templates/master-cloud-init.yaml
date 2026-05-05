@@ -65,8 +65,8 @@ write_files:
 
       JOIN_CMD="curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=${k3s_version} sh -s - agent --token=$${TOKEN} --server https://$${MASTER_IP}:6443 ${other_flags}"
 
-      echo "$JOIN_CMD" > $${config_store_path}/join.sh
-      chmod +x $${config_store_path}/join.sh
+      echo "$JOIN_CMD" > $${config_store_path}/join-${cluster_id}.sh
+      chmod +x $${config_store_path}/join-${cluster_id}.sh
 
       echo "$JOIN_CMD"
 
@@ -104,7 +104,7 @@ write_files:
       EOF
 
       echo "=== Setting up Kube config ==="
-      k3s kubectl config view --raw > $${config_store_path}/kubeconfig
+      k3s kubectl config view --raw > $${config_store_path}/kubeconfig-${cluster_id}
       mkdir -p /root/.kube
       k3s kubectl config view --raw > /root/.kube/config
 

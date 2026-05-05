@@ -25,6 +25,7 @@ resource "proxmox_virtual_environment_file" "master_cloud_init" {
 
   source_raw {
     data = templatefile("${path.module}/templates/master-cloud-init.yaml", {
+      cluster_id     = random_id.cluster_id.hex,
       ssh_public_key = trimspace(tls_private_key.ubuntu_vm_key.public_key_openssh),
       ssh_password   = random_password.ubuntu_vm_password.result,
       k3s_token      = random_id.k3s_token.hex,
@@ -48,7 +49,8 @@ resource "proxmox_virtual_environment_file" "worker_cloud_init" {
 
   source_raw {
     data = templatefile("${path.module}/templates/worker-cloud-init.yaml", {
-      node_index        = count.index
+      cluster_id     = random_id.cluster_id.hex,
+      node_index     = count.index
       node_id        = random_id.worker_node_id[count.index].hex,
       ssh_public_key = trimspace(tls_private_key.ubuntu_vm_key.public_key_openssh),
       ssh_password   = random_password.ubuntu_vm_password.result,
@@ -56,7 +58,7 @@ resource "proxmox_virtual_environment_file" "worker_cloud_init" {
       k3s_version    = "v1.30.0+k3s1",
       cluster_name   = "lab",
       master_address = "192.168.1.60",
-      install_flags  = "--disable local-storage --disable traefik --disable metrics-server",
+      install_flags  = "--disable local-storage --disable traefik",
       other_flags    = ""
     })
 
@@ -74,7 +76,7 @@ resource "random_id" "cluster_id" {
 }
 
 resource "random_id" "worker_node_id" {
-  count = local.worker_count
+  count       = local.worker_count
   byte_length = 8
-  
+
 }
