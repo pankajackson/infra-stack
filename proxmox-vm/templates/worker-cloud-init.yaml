@@ -1,7 +1,7 @@
 #cloud-config
 package_update: true
 ssh_pwauth: true
-hostname: lxa-${cluster_name}-worker
+hostname: lxa-${cluster_name}-worker-${node_index}-${node_id}
 
 users:
   - name: ubuntu

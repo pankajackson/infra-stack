@@ -40,12 +40,16 @@ resource "proxmox_virtual_environment_file" "master_cloud_init" {
 }
 
 resource "proxmox_virtual_environment_file" "worker_cloud_init" {
+  count = local.worker_count
+
   content_type = "snippets"
   datastore_id = "local"
   node_name    = "proxmox"
 
   source_raw {
     data = templatefile("${path.module}/templates/worker-cloud-init.yaml", {
+      node_index        = count.index
+      node_id        = random_id.worker_node_id[count.index].hex,
       ssh_public_key = trimspace(tls_private_key.ubuntu_vm_key.public_key_openssh),
       ssh_password   = random_password.ubuntu_vm_password.result,
       k3s_token      = random_id.k3s_token.hex,
@@ -56,11 +60,21 @@ resource "proxmox_virtual_environment_file" "worker_cloud_init" {
       other_flags    = ""
     })
 
-    file_name = "k8s-worker-cloud-init.yaml"
+    file_name = "k8s-worker-${count.index}-cloud-init.yaml"
   }
 }
 
 
 resource "random_id" "k3s_token" {
   byte_length = 32
+}
+
+resource "random_id" "cluster_id" {
+  byte_length = 8
+}
+
+resource "random_id" "worker_node_id" {
+  count = local.worker_count
+  byte_length = 8
+  
 }

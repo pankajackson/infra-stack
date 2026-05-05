@@ -1,11 +1,15 @@
-resource "proxmox_virtual_environment_vm" "lxa-k8s-worker" {
-  # depends_on = [ proxmox_virtual_environment_vm.lxa-k8s-master ]
+locals {
+  worker_count = 3
+}
 
-  name        = "lxa-kube-worker"
+resource "proxmox_virtual_environment_vm" "lxa-k8s-worker" {
+  count = local.worker_count
+
+  name        = "lxa-kube-worker-${count.index}"
   description = "Managed by Terraform"
   tags        = ["terraform", "ubuntu"]
   node_name   = "proxmox"
-  vm_id       = 4322
+  vm_id       = 4321 + count.index + 1
 
   agent {
     # read 'Qemu guest agent' section, change to true only when ready
@@ -51,12 +55,12 @@ resource "proxmox_virtual_environment_vm" "lxa-k8s-worker" {
   initialization {
     ip_config {
       ipv4 {
-        address = "192.168.1.61/24"
+        address = "192.168.1.${61 + count.index}/24"
         gateway = "192.168.1.1"
       }
     }
 
-    user_data_file_id = proxmox_virtual_environment_file.worker_cloud_init.id
+    user_data_file_id = proxmox_virtual_environment_file.worker_cloud_init[count.index].id
 
   }
 
