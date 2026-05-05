@@ -17,7 +17,88 @@ chpasswd:
 
 packages:
   - qemu-guest-agent
+  - curl
+  - jq
+  - net-tools
+  - iputils-ping
+  - nfs-common
+  - yq
+  - python3-pip
+
+write_files:
+  - path: /usr/local/bin/k3s-master-setup.sh
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      set -e
+
+      echo "=== Fetching master ip ==="
+      MASTER_IP=${master_address != "" ? master_address : "$(hostname -I | awk '{print $1}')"}
+
+      echo "=== Setting up k3s config ==="
+      mkdir -p /etc/rancher/k3s
+      cat <<EOF > /etc/rancher/k3s/config.yaml
+      node-name: $(hostname)
+      EOF
+
+      echo "=== Installing K3s master ==="
+      curl -sfL https://get.k3s.io | \
+      INSTALL_K3S_VERSION="${k3s_version}" \
+      sh -s - server \
+      --token="${k3s_token}" \
+      --tls-san $${MASTER_IP} \
+      ${install_flags} ${other_flags}
+
+      echo "=== Preparing Join Command ==="
+      TOKEN="${k3s_token}"
+      mkdir -p /lxa_k8s
+
+      JOIN_CMD="curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=${k3s_version} sh -s - agent --token=$${TOKEN} --server https://$${MASTER_IP}:6443 ${other_flags}"
+
+      echo "$JOIN_CMD" > /lxa_k8s/join.sh
+      chmod +x /lxa_k8s/join.sh
+
+      echo "$JOIN_CMD"
+
+      echo "=== Setting up Context ==="
+
+      python3 - <<'EOF'
+      import subprocess, sys
+      try:
+          import yaml
+      except ImportError:
+          subprocess.check_call([sys.executable, "-m", "pip", "install", "pyyaml"])
+      EOF
+
+      python3 - "$${MASTER_IP}" "${cluster_name}" <<EOF
+      import sys, yaml
+
+      master_ip = sys.argv[1]
+      cluster_name = sys.argv[2]
+
+      path = "/etc/rancher/k3s/k3s.yaml"
+
+      with open(path, "r") as f:
+          data = yaml.safe_load(f)
+
+      data["clusters"][0]["name"] = f"lxa-{cluster_name}"
+      data["clusters"][0]["cluster"]["server"] = f"https://{master_ip}:6443"
+      data["contexts"][0]["name"] = "lxa"
+      data["contexts"][0]["context"]["cluster"] = f"lxa-{cluster_name}"
+      data["contexts"][0]["context"]["user"] = f"lxa-{cluster_name}-admin"
+      data["current-context"] = "lxa"
+      data["users"][0]["name"] = f"lxa-{cluster_name}-admin"
+
+      with open(path, "w") as f:
+          yaml.safe_dump(data, f, default_flow_style=False)
+      EOF
+
+      echo "=== Setting up Kube config ==="
+      k3s kubectl config view --raw > /lxa_k8s/kubeconfig
+      mkdir -p /root/.kube
+      k3s kubectl config view --raw > /root/.kube/config
 
 runcmd:
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent
+  - /usr/local/bin/k3s-master-setup.sh
