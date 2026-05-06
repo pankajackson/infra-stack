@@ -21,3 +21,7 @@ provider "proxmox" {
 provider "random" {}
 
 provider "tls" {}
+
+provider "null" {}
+
+provider "local" {}

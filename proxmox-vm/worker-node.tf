@@ -85,19 +85,4 @@ resource "proxmox_virtual_environment_vm" "lxa-k8s-worker" {
 
   serial_device {}
 
-  provisioner "local-exec" {
-    when = destroy
-
-    command = <<EOT
-  eval "$(ssh-agent -s)"
-  echo "${tls_private_key.ubuntu_vm_key.private_key_pem}" | ssh-add -
-
-  ssh -o StrictHostKeyChecking=no ubuntu@192.168.1.60 \
-  "kubectl drain ${self.name} --ignore-daemonsets --delete-emptydir-data || true && \
-  kubectl delete node ${self.name} || true"
-
-  ssh-agent -k
-  EOT
-  }
-
 }

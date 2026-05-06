@@ -1,0 +1,30 @@
+resource "null_resource" "worker_cleanup" {
+  count = local.worker_count
+
+  triggers = {
+    node_name = "lxa-lab-worker-${count.index}-${random_id.worker_node_id[count.index].hex}"
+    private_key = nonsensitive(tls_private_key.ubuntu_vm_key.private_key_pem)
+  }
+
+  provisioner "local-exec" {
+    when = destroy
+
+    environment = {
+      SSH_KEY = self.triggers.private_key
+    }
+
+    command = <<EOT
+eval "$(ssh-agent -s)"
+echo "$SSH_KEY" | ssh-add -
+
+ssh -o StrictHostKeyChecking=no \
+  -o UserKnownHostsFile=/dev/null \
+  ubuntu@192.168.1.60 \
+  "sudo kubectl drain ${self.triggers.node_name} --ignore-daemonsets --delete-emptydir-data || true && \
+  sudo kubectl delete node ${self.triggers.node_name} || true"
+
+ssh-agent -k
+EOT
+  }
+
+}
