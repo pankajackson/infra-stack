@@ -1,11 +1,18 @@
 locals {
-  worker_count = 3
+  worker_count = 2
+}
+
+locals {
+  worker_names = [
+    for i in range(local.worker_count) :
+    "lxa-lab-worker-${i}-${random_id.worker_node_id[i].hex}"
+  ]
 }
 
 resource "proxmox_virtual_environment_vm" "lxa-k8s-worker" {
   count = local.worker_count
 
-  name        = "lxa-kube-worker-${count.index}"
+  name        = local.worker_names[count.index]
   description = "Managed by Terraform"
   tags        = ["terraform", "ubuntu"]
   node_name   = "proxmox"
@@ -77,5 +84,20 @@ resource "proxmox_virtual_environment_vm" "lxa-k8s-worker" {
   }
 
   serial_device {}
+
+  provisioner "local-exec" {
+    when = destroy
+
+    command = <<EOT
+  eval "$(ssh-agent -s)"
+  echo "${tls_private_key.ubuntu_vm_key.private_key_pem}" | ssh-add -
+
+  ssh -o StrictHostKeyChecking=no ubuntu@192.168.1.60 \
+  "kubectl drain ${self.name} --ignore-daemonsets --delete-emptydir-data || true && \
+  kubectl delete node ${self.name} || true"
+
+  ssh-agent -k
+  EOT
+  }
 
 }

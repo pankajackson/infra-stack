@@ -18,6 +18,12 @@ resource "tls_private_key" "ubuntu_vm_key" {
   rsa_bits  = 2048
 }
 
+resource "local_file" "ssh_key" {
+  content  = tls_private_key.ubuntu_vm_key.private_key_pem
+  filename = "${path.module}/vm_key.pem"
+  file_permission = "0600"
+}
+
 resource "proxmox_virtual_environment_file" "master_cloud_init" {
   content_type = "snippets"
   datastore_id = "local"
@@ -50,8 +56,7 @@ resource "proxmox_virtual_environment_file" "worker_cloud_init" {
   source_raw {
     data = templatefile("${path.module}/templates/worker-cloud-init.yaml", {
       cluster_id     = random_id.cluster_id.hex,
-      node_index     = count.index
-      node_id        = random_id.worker_node_id[count.index].hex,
+      node_name      = local.worker_names[count.index]
       ssh_public_key = trimspace(tls_private_key.ubuntu_vm_key.public_key_openssh),
       ssh_password   = random_password.ubuntu_vm_password.result,
       k3s_token      = random_id.k3s_token.hex,
@@ -78,5 +83,4 @@ resource "random_id" "cluster_id" {
 resource "random_id" "worker_node_id" {
   count       = local.worker_count
   byte_length = 8
-
 }
