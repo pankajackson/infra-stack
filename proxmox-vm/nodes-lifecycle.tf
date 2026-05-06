@@ -20,8 +20,7 @@ echo "$SSH_KEY" | ssh-add -
 ssh -o StrictHostKeyChecking=no \
   -o UserKnownHostsFile=/dev/null \
   ubuntu@192.168.1.60 \
-  "sudo kubectl drain ${self.triggers.node_name} --ignore-daemonsets --delete-emptydir-data || true && \
-  sudo kubectl delete node ${self.triggers.node_name} || true"
+  "sudo /usr/local/bin/k8s-worker-cleanup.sh ${self.triggers.node_name}"
 
 ssh-agent -k
 EOT

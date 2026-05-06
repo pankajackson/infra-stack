@@ -57,6 +57,33 @@ write_files:
         exit 1
       fi
 
+  - path: /usr/local/bin/k8s-worker-cleanup.sh
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      set -e
+
+      NODE_NAME="$1"
+
+      if [ -z "$NODE_NAME" ]; then
+        echo "❌ Node name not provided"
+        exit 1
+      fi
+
+      echo "Cleaning up node: $NODE_NAME"
+
+      # Drain (ignore errors)
+      kubectl drain "$NODE_NAME" \
+        --ignore-daemonsets \
+        --delete-emptydir-data \
+        >/dev/null 2>&1 || true
+
+      # Delete node (ignore if already gone)
+      kubectl delete node "$NODE_NAME" \
+        >/dev/null 2>&1 || true
+
+      echo "✅ Cleanup completed for $NODE_NAME"
+
   - path: /usr/local/bin/k3s-shared-storage-setup.sh
     permissions: "0755"
     content: |
