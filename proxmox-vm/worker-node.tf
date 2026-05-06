@@ -2,13 +2,6 @@ locals {
   worker_count = 2
 }
 
-locals {
-  worker_names = [
-    for i in range(local.worker_count) :
-    "lxa-lab-worker-${i}-${random_id.worker_node_id[i].hex}"
-  ]
-}
-
 resource "proxmox_virtual_environment_vm" "lxa-k8s-worker" {
   count = local.worker_count
 
