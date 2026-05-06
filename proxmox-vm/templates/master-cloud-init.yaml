@@ -27,6 +27,36 @@ packages:
   - python3-pip
 
 write_files:
+  - path: /usr/local/bin/k8s-node-label.sh
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      set -e
+
+      NODE_NAME="$1"
+
+      LABEL_KEY='node-role.kubernetes.io/worker'
+      LABEL_VALUE=''
+      MAX_ATTEMPTS=60
+      RETRY_DELAY=5
+
+      SUCCESS=0
+
+      for i in $(seq 1 $MAX_ATTEMPTS); do
+        if kubectl label node "$${NODE_NAME}" "$LABEL_KEY=$LABEL_VALUE" --overwrite >/dev/null 2>&1; then
+          SUCCESS=1
+          break
+        fi
+        sleep $RETRY_DELAY
+      done
+
+      if [ "$SUCCESS" -eq 1 ]; then
+        echo "✅ Node $${NODE_NAME} labeled successfully"
+      else
+        echo "❌ Failed to label node $${NODE_NAME} after $${MAX_ATTEMPTS} attempts"
+        exit 1
+      fi
+
   - path: /usr/local/bin/k3s-shared-storage-setup.sh
     permissions: "0755"
     content: |
