@@ -12,9 +12,19 @@ variable "cluster" {
 variable "proxmox" {
   description = "Proxmox level configuration"
   type = object({
-    node_name     = optional(string, "pve")
-    cpu_type      = optional(string, "x86-64-v2-AES")
+    node              = optional(string, "pve")
+    cpu_type          = optional(string, "x86-64-v2-AES")
     disk_datastore_id = optional(string, "local-lvm")
+  })
+  default = {}
+}
+
+variable "defaults" {
+  description = "Default compute configuration for all nodes"
+  type = object({
+    cpu    = optional(number, 2)
+    memory = optional(number, 2048)
+    disk   = optional(number, 20)
   })
   default = {}
 }
@@ -24,9 +34,9 @@ variable "master" {
   type = object({
     ip_address = optional(string) # null = DHCP
 
-    cpu    = optional(number, 2)
-    memory = optional(number, 2048)
-    disk   = optional(number, 20)
+    cpu    = optional(number)
+    memory = optional(number)
+    disk   = optional(number)
 
     labels = optional(list(string), [])
     taints = optional(list(string), [])
@@ -41,9 +51,9 @@ variable "workers" {
 
     ip_start = optional(number, 61)
 
-    cpu    = optional(number, 2)
-    memory = optional(number, 2048)
-    disk   = optional(number, 20)
+    cpu    = optional(number)
+    memory = optional(number)
+    disk   = optional(number)
 
     labels = optional(list(string), [])
     taints = optional(list(string), [])
@@ -54,12 +64,12 @@ variable "workers" {
 variable "network" {
   description = "Network configuration"
   type = object({
-    gateway    = optional(string, "192.168.1.1")
-    cidr       = optional(string, "192.168.1.0/24")
-    bridge     = optional(string, "vmbr0")
-		dns = optional(object({
+    gateway = optional(string, "192.168.1.1")
+    cidr    = optional(string, "192.168.1.0/24")
+    bridge  = optional(string, "vmbr0")
+    dns = optional(object({
       servers = optional(list(string), ["192.168.1.1", "8.8.8.8"])
-      domain   = optional(string, null)
+      domain  = optional(string, null)
     }), {})
 
     nfs = optional(object({

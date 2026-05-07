@@ -4,7 +4,7 @@ resource "proxmox_virtual_environment_vm" "lxa-k8s-worker" {
   name        = local.worker_names[count.index]
   description = "LXA k8s worker node"
   tags        = ["terraform", "lxa", "kube", "worker"]
-  node_name   = var.proxmox.node_name
+  node_name   = var.proxmox.node
   vm_id       = local.worker_vmids[count.index]
 
   agent {
@@ -26,20 +26,20 @@ resource "proxmox_virtual_environment_vm" "lxa-k8s-worker" {
   }
 
   cpu {
-    cores = var.workers.cpu
+    cores = coalesce(var.workers.cpu, var.defaults.cpu)
     type  = var.proxmox.cpu_type
   }
 
   memory {
-    dedicated = var.workers.memory
-    floating  = var.workers.memory # set equal to dedicated to enable ballooning
+    dedicated = coalesce(var.workers.memory, var.defaults.memory)
+    floating  = coalesce(var.workers.memory, var.defaults.memory) # set equal to dedicated to enable ballooning
   }
 
   disk {
     datastore_id = var.proxmox.disk_datastore_id
     import_from  = proxmox_download_file.latest_ubuntu_22_jammy_qcow2_img.id
     interface    = "scsi0"
-    size         = var.workers.disk
+    size         = coalesce(var.workers.disk, var.defaults.disk)
   }
 
   initialization {

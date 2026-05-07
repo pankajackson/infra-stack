@@ -2,7 +2,7 @@ resource "proxmox_virtual_environment_vm" "lxa-k8s-master" {
   name        = local.master_name
   description = "LXA k8s master node"
   tags        = ["terraform", "lxa", "kube", "master"]
-  node_name   = var.proxmox.node_name
+  node_name   = var.proxmox.node
   vm_id       = local.master_vmid
 
   agent {
@@ -24,20 +24,20 @@ resource "proxmox_virtual_environment_vm" "lxa-k8s-master" {
   }
 
   cpu {
-    cores = var.master.cpu
+    cores = coalesce(var.master.cpu, var.defaults.cpu)
     type  = var.proxmox.cpu_type
   }
 
   memory {
-    dedicated = var.master.memory
-    floating  = var.master.memory # set equal to dedicated to enable ballooning
+    dedicated = coalesce(var.master.memory, var.defaults.memory)
+    floating  = coalesce(var.master.memory, var.defaults.memory) # set equal to dedicated to enable ballooning
   }
 
   disk {
     datastore_id = var.proxmox.disk_datastore_id
     import_from  = proxmox_download_file.latest_ubuntu_22_jammy_qcow2_img.id
     interface    = "scsi0"
-    size         = var.master.disk
+    size         = coalesce(var.master.disk, var.defaults.disk)
   }
 
   initialization {

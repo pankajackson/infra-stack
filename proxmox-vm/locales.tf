@@ -10,7 +10,7 @@ locals {
   # ---- Worker IPs ----
   worker_ips = [
     for i in range(var.workers.count) :
-		cidrhost(var.network.cidr, var.workers.ip_start + i)
+    cidrhost(var.network.cidr, var.workers.ip_start + i)
   ]
 
   # ---- Hostnames ----
@@ -43,9 +43,9 @@ locals {
 
   # ---- K3s flags ----
   k3s_disable_flags = compact([
-    var.k3s.features.traefik       ? null : "--disable traefik",
+    var.k3s.features.traefik ? null : "--disable traefik",
     var.k3s.features.local_storage ? null : "--disable local-storage",
-    var.k3s.features.metrics       ? null : "--disable metrics-server",
+    var.k3s.features.metrics ? null : "--disable metrics-server",
   ])
 
   k3s_disable_args = join(" ", local.k3s_disable_flags)
@@ -76,20 +76,20 @@ locals {
     "--node-taint ${t}"
   ])
 
-	k3s_master_args = join(" ", compact([
-		"--write-kubeconfig-mode 644",
-		"--node-taint CriticalAddonsOnly=true:NoExecute",
-		local.k3s_disable_args,
-		local.k3s_tls_san_args,
-		local.k3s_master_label_args,
-		local.k3s_master_taint_args
-	]))
+  k3s_master_args = join(" ", compact([
+    "--write-kubeconfig-mode 644",
+    "--node-taint CriticalAddonsOnly=true:NoExecute",
+    local.k3s_disable_args,
+    local.k3s_tls_san_args,
+    local.k3s_master_label_args,
+    local.k3s_master_taint_args
+  ]))
 
-	k3s_worker_args = join(" ", compact([
-		local.k3s_worker_label_args,
-		local.k3s_worker_taint_args
-	]))
-		
+  k3s_worker_args = join(" ", compact([
+    local.k3s_worker_label_args,
+    local.k3s_worker_taint_args
+  ]))
+
 }
 
 output "cluster_name" {

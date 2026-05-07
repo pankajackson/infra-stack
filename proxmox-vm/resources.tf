@@ -19,8 +19,8 @@ resource "tls_private_key" "ubuntu_vm_key" {
 }
 
 resource "local_file" "ssh_key" {
-  content  = tls_private_key.ubuntu_vm_key.private_key_pem
-  filename = "${path.module}/vm_key.pem"
+  content         = tls_private_key.ubuntu_vm_key.private_key_pem
+  filename        = "${path.module}/vm_key.pem"
   file_permission = "0600"
 }
 

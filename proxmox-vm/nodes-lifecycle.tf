@@ -2,7 +2,7 @@ resource "null_resource" "worker_cleanup" {
   count = var.workers.count
 
   triggers = {
-    node_name = "lxa-lab-worker-${count.index}-${random_id.worker_node_id[count.index].hex}"
+    node_name   = "lxa-lab-worker-${count.index}-${random_id.worker_node_id[count.index].hex}"
     private_key = nonsensitive(tls_private_key.ubuntu_vm_key.private_key_pem)
   }
 
@@ -32,18 +32,18 @@ resource "null_resource" "new_worker_lifecycle" {
   count = var.workers.count
 
   triggers = {
-    node_name = "lxa-lab-worker-${count.index}-${random_id.worker_node_id[count.index].hex}"
+    node_name   = "lxa-lab-worker-${count.index}-${random_id.worker_node_id[count.index].hex}"
     private_key = nonsensitive(tls_private_key.ubuntu_vm_key.private_key_pem)
   }
 
-	provisioner "local-exec" {
-		when = create
+  provisioner "local-exec" {
+    when = create
 
-		environment = {
-			SSH_KEY = self.triggers.private_key
-		}
+    environment = {
+      SSH_KEY = self.triggers.private_key
+    }
 
-		command = <<EOT
+    command = <<EOT
 	eval "$(ssh-agent -s)"
 	echo "$SSH_KEY" | ssh-add -
 
@@ -54,6 +54,6 @@ resource "null_resource" "new_worker_lifecycle" {
 
 	ssh-agent -k
 	EOT
-	}
+  }
 
 }
