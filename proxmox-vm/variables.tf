@@ -9,6 +9,16 @@ variable "cluster" {
   default = {}
 }
 
+variable "proxmox" {
+  description = "Proxmox level configuration"
+  type = object({
+    node_name     = optional(string, "pve")
+    cpu_type      = optional(string, "x86-64-v2-AES")
+    disk_datastore_id = optional(string, "local-lvm")
+  })
+  default = {}
+}
+
 variable "master" {
   description = "Master node configuration"
   type = object({

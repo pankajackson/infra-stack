@@ -1,15 +1,11 @@
-locals {
-  worker_count = 2
-}
-
 resource "proxmox_virtual_environment_vm" "lxa-k8s-worker" {
-  count = local.worker_count
+  count = var.workers.count
 
   name        = local.worker_names[count.index]
-  description = "Managed by Terraform"
-  tags        = ["terraform", "ubuntu"]
-  node_name   = "proxmox"
-  vm_id       = 4321 + count.index + 1
+  description = "LXA k8s worker node"
+  tags        = ["terraform", "lxa", "kube", "worker"]
+  node_name   = var.proxmox.node_name
+  vm_id       = local.worker_vmids[count.index]
 
   agent {
     # read 'Qemu guest agent' section, change to true only when ready
@@ -30,33 +26,27 @@ resource "proxmox_virtual_environment_vm" "lxa-k8s-worker" {
   }
 
   cpu {
-    cores = 2
-    type  = "x86-64-v2-AES" # recommended for modern CPUs
+    cores = var.workers.cpu
+    type  = var.proxmox.cpu_type
   }
 
   memory {
-    dedicated = 2048
-    floating  = 2048 # set equal to dedicated to enable ballooning
+    dedicated = var.workers.memory
+    floating  = var.workers.memory # set equal to dedicated to enable ballooning
   }
 
   disk {
-    datastore_id = "local-lvm"
+    datastore_id = var.proxmox.disk_datastore_id
     import_from  = proxmox_download_file.latest_ubuntu_22_jammy_qcow2_img.id
     interface    = "scsi0"
-    size         = 20
-  }
-
-  disk {
-    datastore_id = "local-lvm"
-    interface    = "scsi1"
-    size         = 30
+    size         = var.workers.disk
   }
 
   initialization {
     ip_config {
       ipv4 {
-        address = "192.168.1.${61 + count.index}/24"
-        gateway = "192.168.1.1"
+        address = local.worker_ips[count.index]
+        gateway = var.network.gateway
       }
     }
 
@@ -65,7 +55,7 @@ resource "proxmox_virtual_environment_vm" "lxa-k8s-worker" {
   }
 
   network_device {
-    bridge = "vmbr0"
+    bridge = var.network.bridge
   }
 
   operating_system {

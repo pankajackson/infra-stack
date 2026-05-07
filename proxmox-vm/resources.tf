@@ -47,7 +47,7 @@ resource "proxmox_virtual_environment_file" "master_cloud_init" {
 }
 
 resource "proxmox_virtual_environment_file" "worker_cloud_init" {
-  count = local.worker_count
+  count = var.workers.count
 
   content_type = "snippets"
   datastore_id = "local"
@@ -81,6 +81,6 @@ resource "random_id" "cluster_id" {
 }
 
 resource "random_id" "worker_node_id" {
-  count       = local.worker_count
+  count       = var.workers.count
   byte_length = 8
 }

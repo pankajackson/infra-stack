@@ -20,6 +20,20 @@ locals {
     "lxa-${local.cluster_name}-worker-${i}-${random_id.worker_node_id[i].hex}"
   ]
 
+  # ---- Extract last octets ----
+  master_octet = tonumber(split(".", local.master_ip)[3])
+  worker_octets = [
+    for ip in local.worker_ips :
+    tonumber(split(".", ip)[3])
+  ]
+
+  # ---- VM IDs ----
+  master_vmid = tonumber("${local.master_octet}${local.master_octet}")
+  worker_vmids = [
+    for octet in local.worker_octets :
+    tonumber("${local.master_octet}${octet}")
+  ]
+
   # ---- SSH user (fixed, as you wanted) ----
   ssh_user = "lxa"
 

@@ -1,5 +1,5 @@
 resource "null_resource" "worker_cleanup" {
-  count = local.worker_count
+  count = var.workers.count
 
   triggers = {
     node_name = "lxa-lab-worker-${count.index}-${random_id.worker_node_id[count.index].hex}"
@@ -29,7 +29,7 @@ EOT
 }
 
 resource "null_resource" "new_worker_lifecycle" {
-  count = local.worker_count
+  count = var.workers.count
 
   triggers = {
     node_name = "lxa-lab-worker-${count.index}-${random_id.worker_node_id[count.index].hex}"
