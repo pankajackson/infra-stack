@@ -4,7 +4,7 @@ ssh_pwauth: true
 hostname: lxa-${cluster_name}-master
 
 users:
-  - name: ubuntu
+  - name: ${ssh_user}
     sudo: ALL=(ALL) NOPASSWD:ALL
     shell: /bin/bash
     lock_passwd: false
@@ -13,7 +13,7 @@ users:
 
 chpasswd:
   list: |
-    ubuntu:${ssh_password}
+    ${ssh_user}:${ssh_password}
   expire: false
 
 packages:
@@ -88,8 +88,8 @@ write_files:
     permissions: "0755"
     content: |
       #!/bin/bash
-      mkdir -p /lxa_k8s
-      echo "192.168.1.4:/volume1/infra-storage/lxa_k8s /lxa_k8s nfs defaults,_netdev 0 0" >> /etc/fstab
+      mkdir -p ${data_dir}
+      echo "${nfs_server}:${nfs_path} ${data_dir} nfs defaults,_netdev 0 0" >> /etc/fstab
       mount -a
 
   - path: /usr/local/bin/k3s-master-setup.sh
@@ -117,7 +117,7 @@ write_files:
 
       echo "=== Preparing Join Command ==="
       TOKEN="${k3s_token}"
-      config_store_path="/lxa_k8s/${cluster_name}"
+      config_store_path="${data_dir}/${cluster_name}"
       mkdir -p $${config_store_path}
 
       JOIN_CMD="curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=${k3s_version} sh -s - agent --token=$${TOKEN} --server https://$${MASTER_IP}:6443 ${other_flags}"

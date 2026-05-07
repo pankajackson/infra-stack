@@ -3,9 +3,10 @@ resource "proxmox_virtual_environment_vm" "lxa-k8s-worker" {
 
   name        = local.worker_names[count.index]
   description = "LXA k8s worker node"
-  tags        = ["terraform", "lxa", "kube", "worker"]
+  tags        = ["terraform", "lxa-kube", "worker"]
   node_name   = var.proxmox.node
   vm_id       = local.worker_vmids[count.index]
+
 
   agent {
     # read 'Qemu guest agent' section, change to true only when ready
@@ -45,7 +46,7 @@ resource "proxmox_virtual_environment_vm" "lxa-k8s-worker" {
   initialization {
     ip_config {
       ipv4 {
-        address = local.worker_ips[count.index]
+        address = local.worker_ips_cidr[count.index]
         gateway = var.network.gateway
       }
     }

@@ -4,7 +4,7 @@ ssh_pwauth: true
 hostname: ${node_name}
 
 users:
-  - name: ubuntu
+  - name: ${ssh_user}
     sudo: ALL=(ALL) NOPASSWD:ALL
     shell: /bin/bash
     lock_passwd: false
@@ -13,7 +13,7 @@ users:
 
 chpasswd:
   list: |
-    ubuntu:${ssh_password}
+    ${ssh_user}:${ssh_password}
   expire: false
 
 packages:
@@ -31,8 +31,8 @@ write_files:
     permissions: "0755"
     content: |
       #!/bin/bash
-      mkdir -p /lxa_k8s
-      echo "192.168.1.4:/volume1/infra-storage/lxa_k8s /lxa_k8s nfs defaults,_netdev 0 0" >> /etc/fstab
+      mkdir -p ${data_dir}
+      echo "${nfs_server}:${nfs_path} ${data_dir} nfs defaults,_netdev 0 0" >> /etc/fstab
       mount -a
 
   - path: /usr/local/bin/k3s-worker-setup.sh
@@ -40,7 +40,7 @@ write_files:
     content: |
       #!/bin/bash
       set -e
-      config_store_path="/lxa_k8s/${cluster_name}"
+      config_store_path="${data_dir}/${cluster_name}"
       JOIN_SCRIPT_PATH="$${config_store_path}/join-${cluster_id}.sh"
       KUBECONFIG_SRC="$${config_store_path}/kubeconfig-${cluster_id}"
       KUBECONFIG_DEST="$HOME/.kube/config"

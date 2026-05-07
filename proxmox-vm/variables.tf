@@ -83,9 +83,10 @@ variable "network" {
 variable "k3s" {
   description = "K3s configuration"
   type = object({
-    version = optional(string, "v1.30.0+k3s1")
-    token   = optional(string, null)
-    tls_san = optional(list(string), [])
+    version    = optional(string, "v1.30.0+k3s1")
+    token      = optional(string, null)
+    tls_san    = optional(list(string), [])
+    extra_args = optional(list(string), [])
 
     features = optional(object({
       traefik       = optional(bool, false)
@@ -96,9 +97,15 @@ variable "k3s" {
   default = {}
 }
 
-variable "system" {
+variable "os" {
   description = "Base system configuration"
   type = object({
+    image = optional(object({
+      url          = optional(string, "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img")
+      node_name    = optional(string, "proxmox")
+      datastore_id = optional(string, "local")
+      file_name    = optional(string, "jammy-server-cloudimg-amd64.qcow2")
+    }), {})
     extra_packages = optional(list(string), [])
   })
   default = {}

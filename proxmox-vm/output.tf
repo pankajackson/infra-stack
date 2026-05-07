@@ -1,18 +1,22 @@
-output "ubuntu_vm_password" {
-  value     = random_password.ubuntu_vm_password.result
+output "vm_password" {
+  value     = random_password.vm_password.result
   sensitive = true
 }
 
-output "ubuntu_vm_private_key" {
-  value     = tls_private_key.ubuntu_vm_key.private_key_pem
+output "vm_private_key" {
+  value     = tls_private_key.vm_key.private_key_pem
   sensitive = true
 }
 
-output "ubuntu_vm_public_key" {
-  value = tls_private_key.ubuntu_vm_key.public_key_openssh
+output "vm_public_key" {
+  value = tls_private_key.vm_key.public_key_openssh
 }
 
 output "k3s_token" {
   value     = random_id.k3s_token.hex
   sensitive = true
+}
+
+output "master_id" {
+  value = proxmox_virtual_environment_vm.lxa-k8s-master.id
 }

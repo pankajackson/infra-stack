@@ -3,38 +3,50 @@ locals {
   cluster_name = var.cluster.name
   cluster_id   = var.cluster.id != null ? var.cluster.id : random_id.cluster_id.hex
 
-  # ---- Master IP ----
-  master_ip = var.master.ip_address != null ? var.master.ip_address : cidrhost(var.network.cidr, 60)
+  # ---- Network prefix (/24 etc) ----
+  network_prefix = split("/", var.network.cidr)[1]
 
+  # ---- Master IP ----
+  master_ip_raw  = var.master.ip_address != null ? var.master.ip_address : cidrhost(var.network.cidr, 60)
+  master_ip      = local.master_ip_raw
+  master_ip_cidr = "${local.master_ip_raw}/${local.network_prefix}"
 
   # ---- Worker IPs ----
-  worker_ips = [
+  worker_ips_raw = [
     for i in range(var.workers.count) :
     cidrhost(var.network.cidr, var.workers.ip_start + i)
+  ]
+  worker_ips = local.worker_ips_raw
+  worker_ips_cidr = [
+    for ip in local.worker_ips_raw :
+    "${ip}/${local.network_prefix}"
   ]
 
   # ---- Hostnames ----
   master_name = "lxa-${local.cluster_name}-master"
+
   worker_names = [
     for i in range(var.workers.count) :
     "lxa-${local.cluster_name}-worker-${i}-${random_id.worker_node_id[i].hex}"
   ]
 
-  # ---- Extract last octets ----
-  master_octet = tonumber(split(".", local.master_ip)[3])
+  # ---- Extract last octets (WITHOUT CIDR part) ----
+  master_octet = tonumber(split(".", local.master_ip_raw)[3])
+
   worker_octets = [
     for ip in local.worker_ips :
-    tonumber(split(".", ip)[3])
+    tonumber(split(".", split("/", ip)[0])[3])
   ]
 
   # ---- VM IDs ----
   master_vmid = tonumber("${local.master_octet}${local.master_octet}")
+
   worker_vmids = [
     for octet in local.worker_octets :
     tonumber("${local.master_octet}${octet}")
   ]
 
-  # ---- SSH user (fixed, as you wanted) ----
+  # ---- SSH user ----
   ssh_user = "lxa"
 
   # ---- Shared storage ----
@@ -49,7 +61,6 @@ locals {
   ])
 
   k3s_disable_args = join(" ", local.k3s_disable_flags)
-
 
   k3s_tls_san_args = join(" ", [
     for san in var.k3s.tls_san :
@@ -89,6 +100,8 @@ locals {
     local.k3s_worker_label_args,
     local.k3s_worker_taint_args
   ]))
+
+  k3s_extra_args = join(" ", var.k3s.extra_args)
 
 }
 
@@ -139,3 +152,5 @@ output "k3s_master_args" {
 output "k3s_worker_args" {
   value = local.k3s_worker_args
 }
+
+

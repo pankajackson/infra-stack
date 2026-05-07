@@ -1,7 +1,7 @@
 resource "proxmox_virtual_environment_vm" "lxa-k8s-master" {
   name        = local.master_name
   description = "LXA k8s master node"
-  tags        = ["terraform", "lxa", "kube", "master"]
+  tags        = ["terraform", "lxa-kube", "master"]
   node_name   = var.proxmox.node
   vm_id       = local.master_vmid
 
@@ -43,7 +43,7 @@ resource "proxmox_virtual_environment_vm" "lxa-k8s-master" {
   initialization {
     ip_config {
       ipv4 {
-        address = local.master_ip
+        address = local.master_ip_cidr
         gateway = var.network.gateway
       }
     }
