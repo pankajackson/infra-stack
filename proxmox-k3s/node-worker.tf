@@ -1,5 +1,10 @@
 resource "proxmox_virtual_environment_vm" "lxa-k8s-worker" {
   count = var.workers.count
+  lifecycle {
+    replace_triggered_by = [
+      time_static.master_identifier
+    ]
+  }
 
   name        = local.worker_names[count.index]
   description = "LXA k8s worker node"

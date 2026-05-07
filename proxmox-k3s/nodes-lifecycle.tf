@@ -8,6 +8,12 @@ resource "null_resource" "worker_cleanup" {
     private_key = nonsensitive(tls_private_key.vm_key.private_key_pem)
   }
 
+  lifecycle {
+    replace_triggered_by = [
+      time_static.master_identifier
+    ]
+  }
+
   provisioner "local-exec" {
     when = destroy
 
@@ -21,13 +27,12 @@ echo "$SSH_KEY" | ssh-add -
 
 ssh -o StrictHostKeyChecking=no \
   -o UserKnownHostsFile=/dev/null \
-    ${self.triggers.ssh_user}@${self.triggers.master_ip} \
+  ${self.triggers.ssh_user}@${self.triggers.master_ip} \
   "sudo /usr/local/bin/k8s-worker-cleanup.sh ${self.triggers.node_name}"
 
 ssh-agent -k
 EOT
   }
-
 }
 
 resource "null_resource" "new_worker_lifecycle" {
@@ -38,6 +43,12 @@ resource "null_resource" "new_worker_lifecycle" {
     master_ip   = local.master_ip
     ssh_user    = local.ssh_user
     private_key = nonsensitive(tls_private_key.vm_key.private_key_pem)
+  }
+
+  lifecycle {
+    replace_triggered_by = [
+      time_static.master_identifier
+    ]
   }
 
   provisioner "local-exec" {

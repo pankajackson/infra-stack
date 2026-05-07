@@ -3,7 +3,7 @@ variable "cluster" {
   type = object({
     name     = optional(string, "lab")
     id       = optional(string, null)
-    domain   = optional(string, null)
+    domain   = optional(string, null) # TODO: remove this if we don't need it
     data_dir = optional(string, "/lxa_k8s")
   })
   default = {}
@@ -30,7 +30,7 @@ variable "proxmox_username" {
 variable "proxmox_password" {
   description = "Proxmox API password"
   type        = string
-  sensitive    = true
+  sensitive   = true
   nullable    = false
 }
 variable "proxmox_tls_insecure" {
@@ -93,8 +93,8 @@ variable "network" {
     }), {})
 
     nfs = optional(object({
-      server = optional(string, "192.168.1.4")
-      path   = optional(string, "/volume1/infra-storage/lxa_k8s")
+      server = optional(string, "192.168.1.253")
+      path   = optional(string, "/data/lxa_k8s")
     }), {})
   })
   default = {}
@@ -103,7 +103,7 @@ variable "network" {
 variable "k3s" {
   description = "K3s configuration"
   type = object({
-    version    = optional(string, "v1.30.0+k3s1")
+    version    = optional(string, "v1.30.0+k3s1") # Valid list here: curl -sL https://api.github.com/repos/k3s-io/k3s/releases | jq -r '.[].tag_name'
     token      = optional(string, null)
     tls_san    = optional(list(string), [])
     extra_args = optional(list(string), [])
@@ -126,7 +126,7 @@ variable "os" {
       datastore_id = optional(string, "local")
       file_name    = optional(string, "jammy-server-cloudimg-amd64.qcow2")
     }), {})
-    extra_packages = optional(list(string), [])
+    extra_packages = optional(list(string), []) # TODO: add support for extra packages
   })
   default = {}
 }

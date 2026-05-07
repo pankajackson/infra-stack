@@ -67,3 +67,9 @@ resource "proxmox_virtual_environment_vm" "lxa-k8s-master" {
   serial_device {}
 
 }
+
+resource "time_static" "master_identifier" {
+  triggers = {
+    vm = proxmox_virtual_environment_vm.lxa-k8s-master.id
+  }
+}
