@@ -16,7 +16,3 @@ output "k3s_token" {
   value     = random_id.k3s_token.hex
   sensitive = true
 }
-
-output "master_id" {
-  value = proxmox_virtual_environment_vm.lxa-k8s-master.id
-}
