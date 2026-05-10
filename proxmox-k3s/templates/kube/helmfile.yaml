@@ -1,0 +1,63 @@
+repositories:
+  - name: metallb
+    url: https://metallb.github.io/metallb
+
+  - name: ingress-nginx
+    url: https://kubernetes.github.io/ingress-nginx
+
+  - name: nfs-subdir-external-provisioner
+    url: https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
+
+  - name: headlamp
+    url: https://kubernetes-sigs.github.io/headlamp/
+
+releases:
+  - name: metallb
+    installed: ${local.metallb_enabled}
+    namespace: metallb-system
+    createNamespace: true
+    chart: metallb/metallb
+
+  - name: ingress-nginx
+    installed: ${local.nginx_ingress_enabled}
+    namespace: ingress-nginx
+    createNamespace: true
+    chart: ingress-nginx/ingress-nginx
+    values:
+      - controller:
+          service:
+            type: LoadBalancer
+    %{ if nginx_ingress_loadbalancer_ip != null ~}
+            loadBalancerIP: ${local.nginx_ingress_loadbalancer_ip}
+    %{ endif ~}
+
+  - name: nfs-subdir-external-provisioner
+    installed: ${local.nfs_storage_enabled}
+    namespace: storage
+    createNamespace: true
+    chart: nfs-subdir-external-provisioner/nfs-subdir-external-provisioner
+    values:
+      - nfs:
+          server: ${local.nfs_server}
+          path: ${local.nfs_path}
+
+        storageClass:
+          name: nfs
+          defaultClass: true
+
+  - name: headlamp
+    installed: ${local.headlamp_enabled}
+    namespace: headlamp
+    createNamespace: true
+    chart: headlamp/headlamp
+    values:
+      - service:
+          type: ClusterIP
+        ingress:
+          enabled: true
+          ingressClassName: nginx
+          hosts:
+            - host: ${local.headlamp_hostname}
+              paths:
+                - path: /
+                  type: Prefix
