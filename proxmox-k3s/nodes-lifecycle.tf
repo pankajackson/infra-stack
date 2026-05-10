@@ -73,14 +73,13 @@ resource "null_resource" "new_worker_lifecycle" {
 
 }
 
-resource "null_resource" "fetch_kubeconfig" {
+resource "null_resource" "cluster_credentials" {
 
   triggers = {
     master_ip   = local.master_ip
     ssh_user    = local.ssh_user
-    private_key = nonsensitive(tls_private_key.vm_key.private_key_pem)
+    private_key = tls_private_key.vm_key.private_key_pem
     kubeconfig_path = "${var.cluster.data_dir}/${local.cluster_name}/kubeconfig-${local.cluster_id}"
-    some="thing"
   }
 
   lifecycle {
@@ -97,15 +96,20 @@ resource "null_resource" "fetch_kubeconfig" {
     }
 
     command = <<EOT
+  mkdir -p .generated
+
+  echo "$SSH_KEY" > .generated/vm_key.pem
+  chmod 600 .generated/vm_key.pem
+
 	eval "$(ssh-agent -s)"
 	echo "$SSH_KEY" | ssh-add -
 
-  ssh -o StrictHostKeyChecking=no \
-    -o UserKnownHostsFile=/dev/null \
-    ${self.triggers.ssh_user}@${self.triggers.master_ip} \
-    "sudo cat ${self.triggers.kubeconfig_path}" > kubeconfig.yaml
-
-	ssh-agent -k
+  ssh -i .generated/vm_key.pem \
+        -o StrictHostKeyChecking=no \
+        -o UserKnownHostsFile=/dev/null \
+        ${self.triggers.ssh_user}@${self.triggers.master_ip} \
+        "sudo cat ${self.triggers.kubeconfig_path}" \
+        > .generated/kubeconfig.yaml
 	EOT
   }
 
