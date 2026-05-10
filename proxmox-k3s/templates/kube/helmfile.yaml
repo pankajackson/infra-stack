@@ -13,13 +13,13 @@ repositories:
 
 releases:
   - name: metallb
-    installed: ${local.metallb_enabled}
+    installed: ${metallb_enabled}
     namespace: metallb-system
     createNamespace: true
     chart: metallb/metallb
 
   - name: ingress-nginx
-    installed: ${local.nginx_ingress_enabled}
+    installed: ${nginx_ingress_enabled}
     namespace: ingress-nginx
     createNamespace: true
     chart: ingress-nginx/ingress-nginx
@@ -28,25 +28,25 @@ releases:
           service:
             type: LoadBalancer
     %{ if nginx_ingress_loadbalancer_ip != null ~}
-            loadBalancerIP: ${local.nginx_ingress_loadbalancer_ip}
+        loadBalancerIP: ${nginx_ingress_loadbalancer_ip}
     %{ endif ~}
 
   - name: nfs-subdir-external-provisioner
-    installed: ${local.nfs_storage_enabled}
+    installed: ${nfs_storage_enabled}
     namespace: storage
     createNamespace: true
     chart: nfs-subdir-external-provisioner/nfs-subdir-external-provisioner
     values:
       - nfs:
-          server: ${local.nfs_server}
-          path: ${local.nfs_path}
+          server: ${nfs_storage_server}
+          path: ${nfs_storage_path}
 
         storageClass:
           name: nfs
           defaultClass: true
 
   - name: headlamp
-    installed: ${local.headlamp_enabled}
+    installed: ${headlamp_enabled}
     namespace: headlamp
     createNamespace: true
     chart: headlamp/headlamp
@@ -57,7 +57,7 @@ releases:
           enabled: true
           ingressClassName: nginx
           hosts:
-            - host: ${local.headlamp_hostname}
+            - host: ${headlamp_hostname}
               paths:
                 - path: /
                   type: Prefix

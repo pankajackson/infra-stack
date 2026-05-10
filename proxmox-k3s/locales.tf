@@ -111,8 +111,8 @@ locals {
   nginx_ingress_loadbalancer_ip = var.addons.ingress_nginx.loadbalancer_ip
 
   nfs_storage_enabled = var.addons.nfs_storage.enabled
-  nfs_storage_server = var.addons.nfs_storage.server
-  nfs_storage_path = var.addons.nfs_storage.path
+  nfs_storage_server = var.addons.nfs_storage.server != null ? var.addons.nfs_storage.server : var.network.nfs.server
+  nfs_storage_path = var.addons.nfs_storage.path != null  ? var.addons.nfs_storage.path : var.network.nfs.path
   nfs_storage_class = var.addons.nfs_storage.storage_class
   nfs_storage_default_class = var.addons.nfs_storage.default_class
 

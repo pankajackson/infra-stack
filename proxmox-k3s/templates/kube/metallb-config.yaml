@@ -5,7 +5,7 @@ metadata:
   namespace: metallb-system
 spec:
   addresses:
-    - ${local.metallb_ipaddress_pool}
+    - ${metallb_ipaddress_pool}
 
 ---
 apiVersion: metallb.io/v1beta1
