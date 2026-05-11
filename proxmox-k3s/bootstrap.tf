@@ -39,7 +39,6 @@ resource "null_resource" "bootstrap" {
     null_resource.cluster_credentials,
     local_file.helmfile,
     local_file.metallb_config,
-    # local_file.bootstrap_script
   ]
 
   triggers = {
@@ -50,17 +49,38 @@ resource "null_resource" "bootstrap" {
     # bootstrap_script_sha = sha256(local_file.bootstrap_script.content)
   }
 
-  provisioner "local-exec" {
-  environment = {
-    SSH_USER  = local.ssh_user
-    MASTER_IP = local.master_ip
-		ROOT_DIR = path.module
+  connection {
+    type        = "ssh"
+    host        = local.master_ip
+    user        = local.ssh_user
+    private_key = tls_private_key.vm_key.private_key_pem
   }
-    working_dir = path.module
 
-    command = <<EOT
-      chmod +x ${path.module}/scripts/bootstrap.sh
-      ./${path.module}/scripts/bootstrap.sh
-    EOT
+  provisioner "remote-exec" {
+    inline = [
+      "mkdir -p ~/bootstrap/.generated"
+    ]
+  }
+
+  provisioner "file" {
+    source      = "${path.module}/scripts/bootstrap.sh"
+    destination = "/home/${local.ssh_user}/bootstrap/bootstrap.sh"
+  }
+
+  provisioner "file" {
+    source      = "${path.module}/.generated/helmfile.yaml"
+    destination = "/home/${local.ssh_user}/bootstrap/.generated/helmfile.yaml"
+  }
+
+  provisioner "file" {
+    source      = "${path.module}/.generated/metallb-config.yaml"
+    destination = "/home/${local.ssh_user}/bootstrap/.generated/metallb-config.yaml"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x ~/bootstrap/bootstrap.sh",
+      "cd ~/bootstrap && sudo ROOT_DIR=$(pwd) ./bootstrap.sh"
+    ]
   }
 }

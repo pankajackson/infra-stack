@@ -3,31 +3,19 @@
 set -euo pipefail
 
 # -----------------------------------------------------------------------------
-# Configuration (from environment)
+# Configuration
 # -----------------------------------------------------------------------------
 
-# ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="${ROOT_DIR}" # from environment
+ROOT_DIR="${ROOT_DIR:-$(pwd)}"
+
 GENERATED_DIR="${ROOT_DIR}/.generated"
 BIN_DIR="${GENERATED_DIR}/bin"
 
-KUBECONFIG_PATH="${GENERATED_DIR}/kubeconfig.yaml"
-SSH_KEY_PATH="${GENERATED_DIR}/vm_key.pem"
-
-SSH_USER="${SSH_USER}"
-MASTER_IP="${MASTER_IP}"
-
 HELMFILE_VERSION="v1.1.4"
-
-SSH_OPTS=(
-  -i "${SSH_KEY_PATH}"
-  -o StrictHostKeyChecking=no
-  -o UserKnownHostsFile=/dev/null
-)
 
 mkdir -p "${BIN_DIR}"
 
-export KUBECONFIG="${KUBECONFIG_PATH}"
+export KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
 export PATH="${BIN_DIR}:${PATH}"
 
 # -----------------------------------------------------------------------------
@@ -52,6 +40,7 @@ command_exists() {
 
 detect_arch() {
   local arch
+
   arch="$(uname -m)"
 
   case "${arch}" in
@@ -81,22 +70,69 @@ ensure_kubectl() {
     return
   fi
 
-  local local_kubectl="${BIN_DIR}/kubectl"
+  error "kubectl not found"
+  exit 1
+}
 
-  if [ -x "${local_kubectl}" ]; then
-    log "Using local kubectl: ${local_kubectl}"
+# -----------------------------------------------------------------------------
+# Helm
+# -----------------------------------------------------------------------------
+
+ensure_helm() {
+  if command_exists helm; then
+    log "Using system helm: $(command -v helm)"
     return
   fi
 
-  log "Downloading kubectl from K3s master..."
+  local local_helm="${BIN_DIR}/helm"
 
-  scp "${SSH_OPTS[@]}" \
-    "${SSH_USER}@${MASTER_IP}:/usr/local/bin/kubectl" \
-    "${local_kubectl}"
+  if [ -x "${local_helm}" ]; then
+    log "Using local helm: ${local_helm}"
+    return
+  fi
 
-  chmod +x "${local_kubectl}"
+  log "Downloading helm..."
 
-  log "kubectl downloaded"
+  local os
+  local arch
+  local tmp_dir
+
+  os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+  arch="$(detect_arch)"
+
+  tmp_dir="$(mktemp -d)"
+
+  curl -fsSL \
+    -o "${tmp_dir}/helm.tar.gz" \
+    "https://get.helm.sh/helm-v3.18.1-${os}-${arch}.tar.gz"
+
+  tar -xzf "${tmp_dir}/helm.tar.gz" \
+    -C "${tmp_dir}"
+
+  mv "${tmp_dir}/${os}-${arch}/helm" "${local_helm}"
+
+  chmod +x "${local_helm}"
+
+  rm -rf "${tmp_dir}"
+
+  log "helm downloaded"
+}
+
+# -----------------------------------------------------------------------------
+# Helm Diff Plugin
+# -----------------------------------------------------------------------------
+
+ensure_helm_diff() {
+  if helm plugin list | grep -q diff; then
+    log "Helm diff plugin already installed"
+    return
+  fi
+
+  log "Installing helm diff plugin..."
+
+  helm plugin install https://github.com/databus23/helm-diff
+
+  log "Helm diff plugin installed"
 }
 
 # -----------------------------------------------------------------------------
@@ -177,7 +213,6 @@ wait_for_metallb_ready() {
 apply_helmfile() {
   log "Applying Helmfile..."
 
-  KUBECONFIG="${KUBECONFIG_PATH}" \
   helmfile -f "${GENERATED_DIR}/helmfile.yaml" apply
 
   log "Helmfile applied"
@@ -196,16 +231,16 @@ apply_metallb_config() {
 # -----------------------------------------------------------------------------
 
 main() {
-  : "${SSH_USER:?SSH_USER not set}"
-  : "${MASTER_IP:?MASTER_IP not set}"
-
   ensure_kubectl
   kubectl version --client
 
+  ensure_helm
+  helm version
+
+  ensure_helm_diff
+
   ensure_helmfile
   helmfile version
-
-  echo "$KUBECONFIG"
 
   wait_for_nodes_ready
 
