@@ -42,8 +42,8 @@ releases:
           path: ${nfs_storage_path}
 
         storageClass:
-          name: nfs
-          defaultClass: true
+          name: ${nfs_storage_class}
+          defaultClass: ${nfs_storage_default_class}
 
   - name: headlamp
     installed: ${headlamp_enabled}

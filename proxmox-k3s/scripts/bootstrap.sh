@@ -200,7 +200,9 @@ wait_for_metallb_ready() {
 
   kubectl wait \
     --namespace metallb-system \
-    --for=condition=Available deployment/controller \
+    --for=condition=Available \
+    deployment \
+    --all \
     --timeout=5m
 
   log "MetalLB controller is Ready"

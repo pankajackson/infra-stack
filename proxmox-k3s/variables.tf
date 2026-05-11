@@ -141,7 +141,7 @@ variable "addons" {
       path   = optional(string, null)
 
       storage_class = optional(string, "nfs")
-      default_class = optional(bool, true)
+      default_class = optional(bool, false)
     }), {})
 
     headlamp = optional(object({
