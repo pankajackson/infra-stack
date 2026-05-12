@@ -86,3 +86,99 @@ resource "random_id" "worker_node_id" {
   count       = var.workers.count
   byte_length = 4
 }
+
+
+resource "null_resource" "generated_dir" {
+  provisioner "local-exec" {
+    command = "mkdir -p .generated"
+  }
+}
+
+resource "local_file" "vm_private_key" {
+  depends_on = [null_resource.generated_dir]
+
+  content         = tls_private_key.vm_key.private_key_pem
+  filename        = ".generated/vm_key.pem"
+  file_permission = "0600"
+}
+
+resource "null_resource" "cluster_credentials" {
+  depends_on = [
+    proxmox_virtual_environment_vm.lxa-k8s-master,
+    local_file.vm_private_key,
+    null_resource.generated_dir
+  ]
+
+  triggers = {
+    master_ip        = local.master_ip
+    ssh_user         = local.ssh_user
+    kubeconfig_path  = "${var.cluster.data_dir}/${local.cluster_name}/kubeconfig-${local.cluster_id}"
+    cluster_id       = local.cluster_id
+  }
+
+  lifecycle {
+    replace_triggered_by = [
+      time_static.master_identifier
+    ]
+  }
+
+  provisioner "local-exec" {
+
+    when = create
+
+    command = <<EOT
+set -euo pipefail
+
+MASTER="${self.triggers.ssh_user}@${self.triggers.master_ip}"
+KUBECONFIG_PATH="${self.triggers.kubeconfig_path}"
+
+SSH="ssh \
+  -i .generated/vm_key.pem \
+  -o StrictHostKeyChecking=no \
+  -o UserKnownHostsFile=/dev/null \
+  -o BatchMode=yes \
+  -o ConnectTimeout=10 \
+  -o ServerAliveInterval=5 \
+  -o ServerAliveCountMax=2"
+
+retry() {
+  local attempts=$1
+  local sleep_time=$2
+  shift 2
+
+  for ((i=1; i<=attempts; i++)); do
+    if "$@"; then
+      return 0
+    fi
+
+    echo "Attempt $i failed..."
+    sleep "$sleep_time"
+  done
+
+  return 1
+}
+
+echo "Waiting for SSH..."
+retry 60 5 \
+  $SSH $MASTER "echo ok"
+
+echo "Waiting for cloud-init..."
+retry 60 10 \
+  $SSH $MASTER "cloud-init status --wait >/dev/null 2>&1"
+
+echo "Waiting for kubeconfig..."
+retry 60 5 \
+  $SSH $MASTER "sudo test -f $KUBECONFIG_PATH"
+
+echo "Downloading kubeconfig..."
+
+$SSH $MASTER \
+  "sudo cat $KUBECONFIG_PATH" \
+  > .generated/kubeconfig.yaml
+
+chmod 600 .generated/kubeconfig.yaml
+
+echo "Kubeconfig downloaded successfully"
+EOT
+  }
+}

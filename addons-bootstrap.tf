@@ -24,16 +24,6 @@ resource "local_file" "metallb_config" {
   filename = "${path.module}/.generated/metallb-config.yaml"
 }
 
-# resource "local_file" "bootstrap_script" {
-#   content  = templatefile("${path.module}/templates/scripts/bootstrap.sh", {
-# 		ssh_user       = local.ssh_user
-# 		master_address = local.master_ip
-# 	})
-#   filename = "${path.module}/.generated/bootstrap.sh"
-
-#   file_permission = "0755"
-# }
-
 resource "null_resource" "bootstrap" {
   depends_on = [
     null_resource.cluster_credentials,
