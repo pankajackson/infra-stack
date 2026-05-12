@@ -1,15 +1,11 @@
 resource "null_resource" "worker_cleanup" {
   count = var.workers.count
 
-  # depends_on = [
-  #   proxmox_virtual_environment_vm.lxa-k8s-master
-  # ]
-
   triggers = {
     node_name   = local.worker_names[count.index]
     master_ip   = local.master_ip
     ssh_user    = local.ssh_user
-    private_key = nonsensitive(tls_private_key.vm_key.private_key_pem)
+    private_key = tls_private_key.vm_key.private_key_pem
   }
 
   # lifecycle {
@@ -69,7 +65,7 @@ resource "null_resource" "new_worker_lifecycle" {
     node_name   = local.worker_names[count.index]
     master_ip   = local.master_ip
     ssh_user    = local.ssh_user
-    private_key = nonsensitive(tls_private_key.vm_key.private_key_pem)
+    private_key = tls_private_key.vm_key.private_key_pem
   }
 
   lifecycle {
@@ -108,7 +104,7 @@ resource "null_resource" "cluster_credentials" {
   triggers = {
     master_ip   = local.master_ip
     ssh_user    = local.ssh_user
-    private_key = nonsensitive(tls_private_key.vm_key.private_key_pem)
+    private_key = tls_private_key.vm_key.private_key_pem
     kubeconfig_path = "${var.cluster.data_dir}/${local.cluster_name}/kubeconfig-${local.cluster_id}"
   }
 
