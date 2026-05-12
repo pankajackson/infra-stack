@@ -6,6 +6,14 @@ resource "proxmox_download_file" "latest_ubuntu_22_jammy_qcow2_img" {
   file_name    = var.os.image.file_name
 }
 
+resource "random_id" "k3s_token" {
+  byte_length = 32
+}
+
+resource "random_id" "cluster_id" {
+  byte_length = 8
+}
+
 resource "random_password" "vm_password" {
   length           = 16
   override_special = "_%@"
@@ -16,12 +24,6 @@ resource "tls_private_key" "vm_key" {
   algorithm = "RSA"
   rsa_bits  = 2048
 }
-
-# resource "local_file" "ssh_key" {
-#   content         = tls_private_key.vm_key.private_key_pem
-#   filename        = "${path.module}/vm_key.pem"
-#   file_permission = "0600"
-# }
 
 resource "proxmox_virtual_environment_file" "master_cloud_init" {
   content_type = "snippets"
@@ -49,6 +51,11 @@ resource "proxmox_virtual_environment_file" "master_cloud_init" {
   }
 }
 
+resource "random_id" "worker_node_id" {
+  count       = var.workers.count
+  byte_length = 4
+}
+
 resource "proxmox_virtual_environment_file" "worker_cloud_init" {
   count = var.workers.count
 
@@ -72,21 +79,6 @@ resource "proxmox_virtual_environment_file" "worker_cloud_init" {
     file_name = "k8s-worker-${count.index}-cloud-init.yaml"
   }
 }
-
-
-resource "random_id" "k3s_token" {
-  byte_length = 32
-}
-
-resource "random_id" "cluster_id" {
-  byte_length = 8
-}
-
-resource "random_id" "worker_node_id" {
-  count       = var.workers.count
-  byte_length = 4
-}
-
 
 resource "null_resource" "generated_dir" {
   provisioner "local-exec" {
