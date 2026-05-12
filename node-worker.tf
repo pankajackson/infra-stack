@@ -1,5 +1,8 @@
 resource "proxmox_virtual_environment_vm" "lxa-k8s-worker" {
   count = var.workers.count
+
+  depends_on = [proxmox_virtual_environment_vm.lxa-k8s-master]
+  
   lifecycle {
     replace_triggered_by = [
       time_static.master_identifier

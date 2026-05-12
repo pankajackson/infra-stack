@@ -1,6 +1,10 @@
 resource "null_resource" "worker_cleanup" {
   count = var.workers.count
 
+  # depends_on = [
+  #   proxmox_virtual_environment_vm.lxa-k8s-master
+  # ]
+
   triggers = {
     node_name   = local.worker_names[count.index]
     master_ip   = local.master_ip
@@ -8,11 +12,11 @@ resource "null_resource" "worker_cleanup" {
     private_key = nonsensitive(tls_private_key.vm_key.private_key_pem)
   }
 
-  lifecycle {
-    replace_triggered_by = [
-      time_static.master_identifier
-    ]
-  }
+  # lifecycle {
+  #   replace_triggered_by = [
+  #     time_static.master_identifier
+  #   ]
+  # }
 
   provisioner "local-exec" {
     when = destroy
@@ -74,11 +78,14 @@ resource "null_resource" "new_worker_lifecycle" {
 }
 
 resource "null_resource" "cluster_credentials" {
+  depends_on = [
+    proxmox_virtual_environment_vm.lxa-k8s-master
+  ]
 
   triggers = {
     master_ip   = local.master_ip
     ssh_user    = local.ssh_user
-    private_key = tls_private_key.vm_key.private_key_pem
+    private_key = nonsensitive(tls_private_key.vm_key.private_key_pem)
     kubeconfig_path = "${var.cluster.data_dir}/${local.cluster_name}/kubeconfig-${local.cluster_id}"
   }
 
@@ -96,21 +103,70 @@ resource "null_resource" "cluster_credentials" {
     }
 
     command = <<EOT
-  mkdir -p .generated
+    set -euxo pipefail
 
-  echo "$SSH_KEY" > .generated/vm_key.pem
-  chmod 600 .generated/vm_key.pem
+    mkdir -p .generated
 
-	eval "$(ssh-agent -s)"
-	echo "$SSH_KEY" | ssh-add -
+    echo "$SSH_KEY" > .generated/vm_key.pem
+    chmod 600 .generated/vm_key.pem
 
-  ssh -i .generated/vm_key.pem \
-        -o StrictHostKeyChecking=no \
-        -o UserKnownHostsFile=/dev/null \
-        ${self.triggers.ssh_user}@${self.triggers.master_ip} \
-        "sudo cat ${self.triggers.kubeconfig_path}" \
-        > .generated/kubeconfig.yaml
-	EOT
-  }
+    MASTER="${self.triggers.ssh_user}@${self.triggers.master_ip}"
+    KUBECONFIG_PATH="${self.triggers.kubeconfig_path}"
+
+    SSH_CMD="ssh -i .generated/vm_key.pem \
+      -o StrictHostKeyChecking=no \
+      -o UserKnownHostsFile=/dev/null \
+      -o BatchMode=yes \
+      -o ConnectTimeout=10"
+
+    echo "Waiting for SSH..."
+
+    for i in $(seq 1 60); do
+      if $SSH_CMD $MASTER "echo ok" >/dev/null 2>&1; then
+        echo "SSH ready"
+        break
+      fi
+
+      echo "SSH not ready yet..."
+      sleep 5
+    done
+
+    echo "Waiting for cloud-init..."
+
+    for i in $(seq 1 60); do
+      if $SSH_CMD $MASTER \
+        "cloud-init status --wait >/dev/null 2>&1"
+      then
+        echo "Cloud-init finished"
+        break
+      fi
+
+      echo "Cloud-init still running..."
+      sleep 10
+    done
+
+    echo "Waiting for kubeconfig..."
+
+    for i in $(seq 1 60); do
+      if $SSH_CMD $MASTER \
+        "sudo test -f $KUBECONFIG_PATH"
+      then
+        echo "Kubeconfig exists"
+        break
+      fi
+
+      echo "Kubeconfig not ready..."
+      sleep 5
+    done
+
+    echo "Downloading kubeconfig..."
+
+    $SSH_CMD $MASTER \
+      "sudo cat $KUBECONFIG_PATH" \
+      > .generated/kubeconfig.yaml
+
+    echo "Kubeconfig downloaded successfully"
+    EOT
+    }
 
 }
