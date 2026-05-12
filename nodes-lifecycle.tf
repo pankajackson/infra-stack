@@ -26,15 +26,38 @@ resource "null_resource" "worker_cleanup" {
     }
 
     command = <<EOT
-eval "$(ssh-agent -s)"
-echo "$SSH_KEY" | ssh-add -
+set -euo pipefail
 
-ssh -o StrictHostKeyChecking=no \
+mkdir -p .generated
+
+echo "$SSH_KEY" > .generated/vm_key.pem
+chmod 600 .generated/vm_key.pem
+
+MASTER="${self.triggers.ssh_user}@${self.triggers.master_ip}"
+NODE="${self.triggers.node_name}"
+
+SSH_CMD="ssh -i .generated/vm_key.pem \
+  -o StrictHostKeyChecking=no \
   -o UserKnownHostsFile=/dev/null \
-  ${self.triggers.ssh_user}@${self.triggers.master_ip} \
-  "sudo /usr/local/bin/k8s-worker-cleanup.sh ${self.triggers.node_name}"
+  -o BatchMode=yes \
+  -o ConnectTimeout=10 \
+  -o ServerAliveInterval=5 \
+  -o ServerAliveCountMax=2"
 
-ssh-agent -k
+echo "Checking master availability..."
+
+if ! $SSH_CMD $MASTER "echo ok" >/dev/null 2>&1; then
+  echo "Master already unavailable. Skipping cleanup."
+  exit 0
+fi
+
+echo "Running worker cleanup for $NODE"
+
+timeout 180 $SSH_CMD $MASTER \
+  "sudo -n /usr/local/bin/k8s-worker-cleanup.sh $NODE" \
+  || echo "Cleanup interrupted or timed out. Continuing destroy."
+
+echo "Worker cleanup finished"
 EOT
   }
 }
