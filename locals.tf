@@ -104,19 +104,19 @@ locals {
 
   k3s_extra_args = join(" ", var.k3s.extra_args)
 
-  metallb_enabled = var.addons.metallb.enabled
+  metallb_enabled        = var.addons.metallb.enabled
   metallb_ipaddress_pool = var.addons.metallb.ipaddress_pool != null ? var.addons.metallb.ipaddress_pool : var.network.cidr
-  
-  nginx_ingress_enabled = var.addons.ingress_nginx.enabled
+
+  nginx_ingress_enabled         = var.addons.ingress_nginx.enabled
   nginx_ingress_loadbalancer_ip = var.addons.ingress_nginx.loadbalancer_ip
 
-  nfs_storage_enabled = var.addons.nfs_storage.enabled
-  nfs_storage_server = var.addons.nfs_storage.server != null ? var.addons.nfs_storage.server : var.network.nfs.server
-  nfs_storage_path = var.addons.nfs_storage.path != null  ? var.addons.nfs_storage.path : var.network.nfs.path
-  nfs_storage_class = var.addons.nfs_storage.storage_class
+  nfs_storage_enabled       = var.addons.nfs_storage.enabled
+  nfs_storage_server        = var.addons.nfs_storage.server != null ? var.addons.nfs_storage.server : var.network.nfs.server
+  nfs_storage_path          = var.addons.nfs_storage.path != null ? var.addons.nfs_storage.path : var.network.nfs.path
+  nfs_storage_class         = var.addons.nfs_storage.storage_class
   nfs_storage_default_class = var.addons.nfs_storage.default_class
 
-  headlamp_enabled = var.addons.headlamp.enabled
+  headlamp_enabled  = var.addons.headlamp.enabled
   headlamp_hostname = var.addons.headlamp.hostname
-  
+
 }

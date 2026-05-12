@@ -102,10 +102,10 @@ resource "null_resource" "cluster_credentials" {
   ]
 
   triggers = {
-    master_ip        = local.master_ip
-    ssh_user         = local.ssh_user
-    kubeconfig_path  = "${var.cluster.data_dir}/${local.cluster_name}/kubeconfig-${local.cluster_id}"
-    cluster_id       = local.cluster_id
+    master_ip       = local.master_ip
+    ssh_user        = local.ssh_user
+    kubeconfig_path = "${var.cluster.data_dir}/${local.cluster_name}/kubeconfig-${local.cluster_id}"
+    cluster_id      = local.cluster_id
   }
 
   lifecycle {

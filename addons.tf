@@ -1,30 +1,30 @@
 resource "local_file" "helmfile" {
   depends_on = [null_resource.generated_dir]
 
-  content  = templatefile("${path.module}/templates/kube/helmfile.yaml", {
-		metallb_enabled = local.metallb_enabled
+  content = templatefile("${path.module}/templates/kube/helmfile.yaml", {
+    metallb_enabled = local.metallb_enabled
 
-		nginx_ingress_enabled = local.nginx_ingress_enabled
-		nginx_ingress_loadbalancer_ip = local.nginx_ingress_loadbalancer_ip
+    nginx_ingress_enabled         = local.nginx_ingress_enabled
+    nginx_ingress_loadbalancer_ip = local.nginx_ingress_loadbalancer_ip
 
-		nfs_storage_enabled = local.nfs_storage_enabled
-		nfs_storage_server = local.nfs_storage_server
-		nfs_storage_path = local.nfs_storage_path
-		nfs_storage_class = local.nfs_storage_class
-		nfs_storage_default_class = local.nfs_storage_default_class
+    nfs_storage_enabled       = local.nfs_storage_enabled
+    nfs_storage_server        = local.nfs_storage_server
+    nfs_storage_path          = local.nfs_storage_path
+    nfs_storage_class         = local.nfs_storage_class
+    nfs_storage_default_class = local.nfs_storage_default_class
 
-		headlamp_enabled = local.headlamp_enabled
-		headlamp_hostname  = local.headlamp_hostname
-	})
+    headlamp_enabled  = local.headlamp_enabled
+    headlamp_hostname = local.headlamp_hostname
+  })
   filename = "${path.module}/.generated/helmfile.yaml"
 }
 
 resource "local_file" "metallb_config" {
   depends_on = [null_resource.generated_dir]
-  
-  content  = templatefile("${path.module}/templates/kube/metallb-config.yaml", {
-		metallb_ipaddress_pool = local.metallb_ipaddress_pool
-	})
+
+  content = templatefile("${path.module}/templates/kube/metallb-config.yaml", {
+    metallb_ipaddress_pool = local.metallb_ipaddress_pool
+  })
   filename = "${path.module}/.generated/metallb-config.yaml"
 }
 
@@ -38,8 +38,8 @@ resource "null_resource" "bootstrap" {
   triggers = {
     cluster_id = local.cluster_id
 
-    helmfile_sha         = sha256(local_file.helmfile.content)
-    metallb_config_sha   = sha256(local_file.metallb_config.content)
+    helmfile_sha       = sha256(local_file.helmfile.content)
+    metallb_config_sha = sha256(local_file.metallb_config.content)
     # bootstrap_script_sha = sha256(local_file.bootstrap_script.content)
   }
 
