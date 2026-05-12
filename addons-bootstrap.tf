@@ -1,4 +1,6 @@
 resource "local_file" "helmfile" {
+  depends_on = [null_resource.generated_dir]
+
   content  = templatefile("${path.module}/templates/kube/helmfile.yaml", {
 		metallb_enabled = local.metallb_enabled
 
@@ -18,6 +20,8 @@ resource "local_file" "helmfile" {
 }
 
 resource "local_file" "metallb_config" {
+  depends_on = [null_resource.generated_dir]
+  
   content  = templatefile("${path.module}/templates/kube/metallb-config.yaml", {
 		metallb_ipaddress_pool = local.metallb_ipaddress_pool
 	})
