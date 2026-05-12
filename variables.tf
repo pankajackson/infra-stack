@@ -109,11 +109,49 @@ variable "k3s" {
     extra_args = optional(list(string), [])
 
     features = optional(object({
+      servicelb      = optional(bool, true)
       traefik       = optional(bool, false)
       local_storage = optional(bool, false)
       metrics       = optional(bool, false)
     }), {})
   })
+  default = {}
+}
+
+variable "addons" {
+  description = "Cluster addons"
+
+  type = object({
+
+    metallb = optional(object({
+      enabled = optional(bool, false)
+      ipaddress_pool = optional(string, null)
+    }), {})
+
+    ingress_nginx = optional(object({
+      enabled = optional(bool, false)
+      loadbalancer_ip = optional(string, null)
+      # extra_args = optional(list(string), [])
+    }), {})
+
+    nfs_storage = optional(object({
+      enabled = optional(bool, false)
+
+      server = optional(string, null)
+      path   = optional(string, null)
+
+      storage_class = optional(string, "nfs")
+      default_class = optional(bool, false)
+    }), {})
+
+    headlamp = optional(object({
+      enabled = optional(bool, false)
+
+      hostname = optional(string, "headlamp.local")
+    }), {})
+
+  })
+
   default = {}
 }
 

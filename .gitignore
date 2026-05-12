@@ -47,4 +47,6 @@ terraform.rc
 .dev/
 *.secret
 *.secrets
+.generated/
 *.pem
+*kubeconfig*
