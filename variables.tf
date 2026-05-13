@@ -141,11 +141,11 @@ variable "os" {
   type = object({
     image = optional(object({
       url          = optional(string, "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img")
-      node_name    = optional(string, "proxmox")
+      node_name    = optional(string, null)
       datastore_id = optional(string, "local")
       file_name    = optional(string, "jammy-server-cloudimg-amd64.qcow2")
     }), {})
-    extra_packages = optional(list(string), []) # TODO: add support for extra packages
+    extra_packages = optional(list(string), [])
   })
   default = {}
 }

@@ -49,6 +49,23 @@ locals {
   # ---- SSH user ----
   ssh_user = "lxa"
 
+# ---- Node packages  ----
+  default_node_packages = [
+    "qemu-guest-agent",
+    "curl",
+    "jq",
+    "net-tools",
+    "iputils-ping",
+    "nfs-common",
+    "yq",
+    "python3-pip"
+  ]
+
+  node_packages = distinct(concat(
+    local.default_node_packages,
+    var.os.extra_packages
+  ))
+
   # ---- Shared storage ----
   nfs_server = var.network.nfs.server
   nfs_path   = var.network.nfs.path
@@ -125,5 +142,4 @@ locals {
     for addon in values(var.addons) :
     try(addon.enabled, false)
   ])
-
 }

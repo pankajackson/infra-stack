@@ -17,14 +17,9 @@ chpasswd:
   expire: false
 
 packages:
-  - qemu-guest-agent
-  - curl
-  - jq
-  - net-tools
-  - iputils-ping
-  - nfs-common
-  - yq
-  - python3-pip
+%{ for pkg in node_packages ~}
+  - ${pkg}
+%{ endfor ~}
 
 write_files:
   - path: /usr/local/bin/k8s-node-label.sh

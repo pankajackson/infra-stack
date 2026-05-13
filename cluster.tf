@@ -1,7 +1,7 @@
 resource "proxmox_download_file" "latest_ubuntu_22_jammy_qcow2_img" {
   content_type = "import"
   datastore_id = var.os.image.datastore_id
-  node_name    = var.os.image.node_name
+  node_name    = coalesce(var.os.image.node_name, var.proxmox.node)
   url          = var.os.image.url
   file_name    = var.os.image.file_name
 }
@@ -34,6 +34,7 @@ resource "proxmox_virtual_environment_file" "master_cloud_init" {
     data = templatefile("${path.module}/templates/master-cloud-init.yaml", {
       cluster_id     = random_id.cluster_id.hex,
       cluster_name   = var.cluster.name,
+      node_packages  = local.node_packages,
       ssh_user       = local.ssh_user
       ssh_public_key = trimspace(tls_private_key.vm_key.public_key_openssh),
       ssh_password   = random_password.vm_password.result,
@@ -68,6 +69,7 @@ resource "proxmox_virtual_environment_file" "worker_cloud_init" {
       cluster_id     = random_id.cluster_id.hex,
       cluster_name   = var.cluster.name,
       node_name      = local.worker_names[count.index]
+      node_packages  = local.node_packages,
       ssh_user       = local.ssh_user
       ssh_public_key = trimspace(tls_private_key.vm_key.public_key_openssh),
       ssh_password   = random_password.vm_password.result,
