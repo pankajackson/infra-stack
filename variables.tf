@@ -32,7 +32,7 @@ variable "defaults" {
 variable "master" {
   description = "Master node configuration"
   type = object({
-    ip_address = optional(string) # null = DHCP
+    ip_address = optional(string)
 
     cpu    = optional(number)
     memory = optional(number)

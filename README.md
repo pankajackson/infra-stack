@@ -1,111 +1,101 @@
 # Terraform Proxmox K3s Cluster Module
 
-A production-ready Terraform module to provision a full **K3s Kubernetes cluster on Proxmox VE**, including master, worker nodes, networking, and optional cluster addons (MetalLB, NGINX ingress, NFS storage, Headlamp).
-
-This module automates:
-
-- VM provisioning on Proxmox
-- Cloud-init based OS bootstrap
-- K3s cluster installation (master + workers)
-- Worker lifecycle management (join + cleanup)
-- Optional addons deployment
-- Kubeconfig generation
-
----
-
-## ✨ Features
-
-- 🚀 Fully automated K3s cluster provisioning
-- 🧠 Smart retry logic for SSH / cloud-init readiness
-- 🧹 Safe worker cleanup during destroy
-- 📦 Optional addons:
-  - MetalLB
-  - NGINX Ingress
-  - NFS storage class
-  - Headlamp UI
-- 🔐 SSH key generation & kubeconfig export
-- 🧩 Highly configurable via structured variables
-- ⚙️ Works with Proxmox VE via `bpg/proxmox` provider
-
----
-
-## 🧱 Architecture
+Provision a fully automated K3s cluster on Proxmox VE using Terraform.
 
 This module provisions:
 
-```
-
-Proxmox
-├── Master VM (K3s server)
-├── Worker VMs (K3s agents)
-├── Cloud-init configuration
-├── K3s bootstrap scripts
-└── Optional cluster addons
-
-```
+- K3s master and worker nodes
+- Cloud-init based VM bootstrap
+- Automatic cluster join and cleanup lifecycle
+- Optional Kubernetes addons
+- Kubeconfig export
+- Shared NFS integration
+- Helmfile-based addon management
 
 ---
 
-## 📦 Requirements
+## Features
 
-- Terraform >= 1.5
-- Proxmox VE >= 7.x
-- Terraform provider:
-  - `bpg/proxmox`
-- SSH access to Proxmox nodes
-- Cloud-init enabled templates in Proxmox
+- Fully automated K3s cluster provisioning
+- Static IP auto-allocation
+- Cloud-init provisioning
+- Worker lifecycle cleanup during destroy
+- Optional addons:
+  - MetalLB
+  - NGINX Ingress
+  - NFS Storage Class
+  - Headlamp
 
----
-
-## 🔌 Providers
-
-This module requires:
-
-```hcl
-terraform {
-  required_providers {
-    proxmox = {
-      source  = "bpg/proxmox"
-      version = "~> 0.5"
-    }
-  }
-}
-```
-
-> ⚠️ Provider configuration is NOT defined inside this module.
-> It must be configured in the root module.
+- Automatic kubeconfig export
+- SSH key generation
+- Helmfile-based addon deployment
+- Proxmox VM ID auto-generation
 
 ---
 
-## 🚀 Usage
+## Requirements
+
+| Name       | Version  |
+| ---------- | -------- |
+| Terraform  | `>= 1.5` |
+| Proxmox VE | `>= 7.x` |
+
+---
+
+## Providers
+
+| Name    | Source             |
+| ------- | ------------------ |
+| proxmox | `bpg/proxmox`      |
+| tls     | `hashicorp/tls`    |
+| local   | `hashicorp/local`  |
+| null    | `hashicorp/null`   |
+| random  | `hashicorp/random` |
+| time    | `hashicorp/time`   |
+
+---
+
+## Usage
 
 ### Basic Example
 
-```hcl
+```hcl id="6q4k5f"
 module "k3s" {
   source = "git::https://github.com/pankajackson/terraform-proxmox-k8s.git"
+
   proxmox = {
-    node = "proxmox"
+    node = "pve"
   }
 
   cluster = {
-    name = "k8s-staging"
-  }
-
-  master = {
-    ip_address = "192.168.1.10"
+    name = "lab"
   }
 
   workers = {
-    count    = 2
+    count = 2
   }
 
   network = {
-    gateway = "192.168.1.1"
-    cidr    = "192.168.1.0/24"
+    cidr   = "192.168.1.0/24"
+    bridge = "vmbr0"
+
     nfs = {
-      server = "192.168.1.4"
-      path   = "/volume1/infra-storage/lxa_k8s"
+      server = "192.168.1.253"
+      path   = "/data/lxa_k8s"
+    }
+  }
+
+  addons = {
+    metallb = {
+      enabled = true
+    }
+
+    ingress_nginx = {
+      enabled = true
+    }
+
+    nfs_storage = {
+      enabled = true
     }
   }
 }
@@ -113,206 +103,299 @@ module "k3s" {
 
 ---
 
-## ⚙️ Inputs
+## Architecture
 
-### 🧩 Cluster Configuration
-
-| Name             | Type   | Default    | Description                 |
-| ---------------- | ------ | ---------- | --------------------------- |
-| cluster.name     | string | "lab"      | Cluster name                |
-| cluster.id       | string | generated  | Unique cluster ID           |
-| cluster.data_dir | string | "/lxa_k8s" | Data directory inside nodes |
-
----
-
-### 🖥 Proxmox Configuration
-
-| Name                      | Type   | Default         |
-| ------------------------- | ------ | --------------- |
-| proxmox.node              | string | "pve"           |
-| proxmox.cpu_type          | string | "x86-64-v2-AES" |
-| proxmox.disk_datastore_id | string | "local-lvm"     |
-
----
-
-### 🧠 Defaults
-
-| Name            | Type   | Default |
-| --------------- | ------ | ------- |
-| defaults.cpu    | number | 2       |
-| defaults.memory | number | 2048    |
-| defaults.disk   | number | 20      |
-
----
-
-### 🎛 Master Node
-
-| Name              | Type         | Description                       |
-| ----------------- | ------------ | --------------------------------- |
-| master.ip_address | string       | Static IP (optional DHCP if null) |
-| master.cpu        | number       | CPU cores                         |
-| master.memory     | number       | RAM in MB                         |
-| master.disk       | number       | Disk size                         |
-| master.labels     | list(string) | Kubernetes labels                 |
-| master.taints     | list(string) | Kubernetes taints                 |
-
----
-
-### 👷 Worker Nodes
-
-| Name             | Type   | Default          |
-| ---------------- | ------ | ---------------- |
-| workers.count    | number | 2                |
-| workers.ip_start | number | 61               |
-| workers.cpu      | number | inherits default |
-| workers.memory   | number | inherits default |
-| workers.disk     | number | inherits default |
-
----
-
-### 🌐 Network
-
-| Name                | Description     |
-| ------------------- | --------------- |
-| network.gateway     | Default gateway |
-| network.cidr        | Cluster subnet  |
-| network.bridge      | Proxmox bridge  |
-| network.dns.servers | DNS servers     |
-| network.nfs.server  | NFS server      |
-| network.nfs.path    | NFS path        |
-
----
-
-### ☸️ K3s Configuration
-
-| Name            | Description                            |
-| --------------- | -------------------------------------- |
-| k3s.version     | K3s version                            |
-| k3s.token       | Cluster token (auto-generated if null) |
-| k3s.tls_san     | Extra SANs                             |
-| k3s.extra_args  | Extra K3s args                         |
-| k3s.features.\* | Enable/disable components              |
-
----
-
-### 🧩 Addons
-
-#### MetalLB
-
-```hcl
-addons.metallb.enabled
-addons.metallb.ipaddress_pool
-```
-
-#### NGINX Ingress
-
-```hcl
-addons.ingress_nginx.enabled
-addons.ingress_nginx.loadbalancer_ip
-```
-
-#### NFS Storage
-
-```hcl
-addons.nfs_storage.enabled
-addons.nfs_storage.server
-addons.nfs_storage.path
-```
-
-#### Headlamp
-
-```hcl
-addons.headlamp.enabled
-addons.headlamp.hostname
+```text id="e7f2bc"
+Proxmox VE
+├── K3s Master Node
+├── K3s Worker Nodes
+├── Cloud-init Bootstrap
+├── Shared NFS Storage
+└── Optional Addons
+    ├── MetalLB
+    ├── NGINX Ingress
+    ├── NFS CSI
+    └── Headlamp
 ```
 
 ---
 
-### 💾 OS Configuration
+## Inputs
 
-| Name                  | Description      |
-| --------------------- | ---------------- |
-| os.image.url          | Cloud image URL  |
-| os.image.node_name    | Proxmox node     |
-| os.image.datastore_id | Storage location |
-| os.extra_packages     | Extra packages   |
+### cluster
 
----
+Cluster level configuration.
 
-## 📤 Outputs
-
-### Cluster Info
-
-| Output       | Description       |
-| ------------ | ----------------- |
-| cluster_name | Cluster name      |
-| cluster_id   | Unique cluster ID |
-| master_ip    | Master node IP    |
-| worker_ips   | Worker node IPs   |
+| Name               | Type     | Default      | Description                                         |
+| ------------------ | -------- | ------------ | --------------------------------------------------- |
+| `cluster.name`     | `string` | `"lab"`      | Cluster name                                        |
+| `cluster.id`       | `string` | `null`       | Unique cluster identifier. Auto-generated when null |
+| `cluster.domain`   | `string` | `null`       | Optional DNS domain                                 |
+| `cluster.data_dir` | `string` | `"/lxa_k8s"` | Shared cluster data directory                       |
 
 ---
 
-### Credentials
+### proxmox
 
-| Output         | Sensitive |
-| -------------- | --------- |
-| vm_password    | ✅        |
-| vm_private_key | ✅        |
-| k3s_token      | ✅        |
+Proxmox VM configuration.
 
----
-
-### Access Helpers
-
-| Output                    | Description                |
-| ------------------------- | -------------------------- |
-| kubeconfig_path           | Local kubeconfig file path |
-| kubeconfig_export_command | Export KUBECONFIG command  |
-| master_ssh_command        | SSH command to master      |
+| Name                        | Type     | Default           | Description                         |
+| --------------------------- | -------- | ----------------- | ----------------------------------- |
+| `proxmox.node`              | `string` | `"pve"`           | Proxmox target node                 |
+| `proxmox.cpu_type`          | `string` | `"x86-64-v2-AES"` | VM CPU type                         |
+| `proxmox.disk_datastore_id` | `string` | `"local-lvm"`     | Proxmox datastore used for VM disks |
 
 ---
 
-## 🔐 Security Notes
+### defaults
 
-- SSH keys are auto-generated per cluster
-- Kubeconfig is stored locally in `.generated/`
-- Sensitive outputs are marked as `sensitive = true`
+Default compute configuration inherited by all nodes.
 
----
-
-## ⚠️ Important Behavior
-
-- Worker cleanup runs automatically during `terraform destroy`
-- Master node availability is checked before cleanup
-- Cloud-init readiness is validated before K3s bootstrap
-- Kubeconfig is fetched only after cluster is ready
+| Name              | Type     | Default | Description             |
+| ----------------- | -------- | ------- | ----------------------- |
+| `defaults.cpu`    | `number` | `2`     | Default CPU cores       |
+| `defaults.memory` | `number` | `2048`  | Default memory in MB    |
+| `defaults.disk`   | `number` | `20`    | Default disk size in GB |
 
 ---
 
-## 🧹 Generated Files
+### master
 
-After apply:
+K3s server node configuration.
 
+| Name                | Type           | Default           | Description              |
+| ------------------- | -------------- | ----------------- | ------------------------ |
+| `master.ip_address` | `string`       | auto-generated    | Static master IP address |
+| `master.cpu`        | `number`       | `defaults.cpu`    | CPU cores                |
+| `master.memory`     | `number`       | `defaults.memory` | Memory in MB             |
+| `master.disk`       | `number`       | `defaults.disk`   | Disk size in GB          |
+| `master.labels`     | `list(string)` | `[]`              | Kubernetes node labels   |
+| `master.taints`     | `list(string)` | `[]`              | Kubernetes node taints   |
+
+#### Automatic Master IP Allocation
+
+If `master.ip_address` is not provided:
+
+```hcl id="m9j4vx"
+cidrhost(network.cidr, 60)
 ```
+
+Example:
+
+```text id="a3r7yx"
+network.cidr = 192.168.1.0/24
+master IP    = 192.168.1.60
+```
+
+---
+
+### workers
+
+K3s worker node configuration.
+
+| Name               | Type           | Default           | Description                                   |
+| ------------------ | -------------- | ----------------- | --------------------------------------------- |
+| `workers.count`    | `number`       | `2`               | Number of worker nodes                        |
+| `workers.ip_start` | `number`       | `61`              | Starting host offset for worker IP allocation |
+| `workers.cpu`      | `number`       | `defaults.cpu`    | CPU cores                                     |
+| `workers.memory`   | `number`       | `defaults.memory` | Memory in MB                                  |
+| `workers.disk`     | `number`       | `defaults.disk`   | Disk size in GB                               |
+| `workers.labels`   | `list(string)` | `[]`              | Kubernetes node labels                        |
+| `workers.taints`   | `list(string)` | `[]`              | Kubernetes node taints                        |
+
+#### Automatic Worker IP Allocation
+
+Worker IPs are generated using:
+
+```hcl id="w5q2eh"
+cidrhost(network.cidr, workers.ip_start + index)
+```
+
+Example:
+
+```text id="r2h7ln"
+network.cidr   = 192.168.1.0/24
+workers.count  = 3
+workers.ip_start = 61
+
+Allocated IPs:
+- 192.168.1.61
+- 192.168.1.62
+- 192.168.1.63
+```
+
+---
+
+### network
+
+Cluster network configuration.
+
+| Name                  | Type           | Default                      | Description       |
+| --------------------- | -------------- | ---------------------------- | ----------------- |
+| `network.gateway`     | `string`       | `"192.168.1.1"`              | Network gateway   |
+| `network.cidr`        | `string`       | `"192.168.1.0/24"`           | Cluster subnet    |
+| `network.bridge`      | `string`       | `"vmbr0"`                    | Proxmox bridge    |
+| `network.dns.servers` | `list(string)` | `["192.168.1.1", "8.8.8.8"]` | DNS servers       |
+| `network.dns.domain`  | `string`       | `null`                       | DNS search domain |
+
+#### network.nfs
+
+Optional shared NFS configuration.
+
+| Name                 | Type     | Required | Description        |
+| -------------------- | -------- | -------- | ------------------ |
+| `network.nfs.server` | `string` | yes      | NFS server address |
+| `network.nfs.path`   | `string` | yes      | NFS export path    |
+
+---
+
+### k3s
+
+K3s cluster configuration.
+
+| Name             | Type           | Default          | Description         |
+| ---------------- | -------------- | ---------------- | ------------------- |
+| `k3s.version`    | `string`       | `"v1.30.0+k3s1"` | K3s version         |
+| `k3s.token`      | `string`       | `null`           | Cluster token       |
+| `k3s.tls_san`    | `list(string)` | `[]`             | Additional TLS SANs |
+| `k3s.extra_args` | `list(string)` | `[]`             | Extra K3s arguments |
+
+#### k3s.features
+
+| Name                         | Type   | Default | Description                   |
+| ---------------------------- | ------ | ------- | ----------------------------- |
+| `k3s.features.servicelb`     | `bool` | `true`  | Enable ServiceLB              |
+| `k3s.features.traefik`       | `bool` | `false` | Enable Traefik                |
+| `k3s.features.local_storage` | `bool` | `false` | Enable local-path provisioner |
+| `k3s.features.metrics`       | `bool` | `false` | Enable metrics-server         |
+
+---
+
+### addons
+
+Optional cluster addons.
+
+---
+
+#### addons.metallb
+
+| Name                            | Type     | Default        | Description                 |
+| ------------------------------- | -------- | -------------- | --------------------------- |
+| `addons.metallb.enabled`        | `bool`   | `false`        | Enable MetalLB              |
+| `addons.metallb.ipaddress_pool` | `string` | auto-generated | MetalLB IP allocation range |
+
+#### Automatic MetalLB Pool Allocation
+
+If no IP pool is specified:
+
+```hcl id="h8f5ms"
+"${cidrhost(network.cidr, 200)}-${cidrhost(network.cidr, 250)}"
+```
+
+Example:
+
+```text id="q2c6wb"
+network.cidr = 192.168.1.0/24
+
+Generated pool:
+192.168.1.200-192.168.1.250
+```
+
+> Do not use full CIDR ranges like `192.168.1.0/24` for MetalLB pools.
+
+---
+
+#### addons.ingress_nginx
+
+| Name                                   | Type     | Default | Description                     |
+| -------------------------------------- | -------- | ------- | ------------------------------- |
+| `addons.ingress_nginx.enabled`         | `bool`   | `false` | Enable NGINX ingress controller |
+| `addons.ingress_nginx.loadbalancer_ip` | `string` | `null`  | Static LoadBalancer IP          |
+
+---
+
+#### addons.nfs_storage
+
+| Name                               | Type     | Default              | Description                    |
+| ---------------------------------- | -------- | -------------------- | ------------------------------ |
+| `addons.nfs_storage.enabled`       | `bool`   | `false`              | Enable NFS storage provisioner |
+| `addons.nfs_storage.server`        | `string` | `network.nfs.server` | NFS server                     |
+| `addons.nfs_storage.path`          | `string` | `network.nfs.path`   | NFS export path                |
+| `addons.nfs_storage.storage_class` | `string` | `"nfs"`              | StorageClass name              |
+| `addons.nfs_storage.default_class` | `bool`   | `false`              | Set as default StorageClass    |
+
+---
+
+#### addons.headlamp
+
+| Name                       | Type     | Default            | Description       |
+| -------------------------- | -------- | ------------------ | ----------------- |
+| `addons.headlamp.enabled`  | `bool`   | `false`            | Enable Headlamp   |
+| `addons.headlamp.hostname` | `string` | `"headlamp.local"` | Headlamp hostname |
+
+---
+
+### os
+
+Base operating system configuration.
+
+#### os.image
+
+| Name                    | Type     | Default                               | Description                          |
+| ----------------------- | -------- | ------------------------------------- | ------------------------------------ |
+| `os.image.url`          | `string` | Ubuntu Jammy cloud image              | Cloud image URL                      |
+| `os.image.node_name`    | `string` | `"proxmox"`                           | Proxmox node used for image download |
+| `os.image.datastore_id` | `string` | `"local"`                             | Proxmox datastore for image storage  |
+| `os.image.file_name`    | `string` | `"jammy-server-cloudimg-amd64.qcow2"` | Downloaded image filename            |
+
+#### os.extra_packages
+
+| Name                | Type           | Default | Description                                    |
+| ------------------- | -------------- | ------- | ---------------------------------------------- |
+| `os.extra_packages` | `list(string)` | `[]`    | Additional packages installed during bootstrap |
+
+---
+
+## Outputs
+
+| Name                        | Description                        |
+| --------------------------- | ---------------------------------- |
+| `cluster_name`              | Cluster name                       |
+| `cluster_id`                | Unique cluster ID                  |
+| `master_ip`                 | Master node IP                     |
+| `worker_ips`                | Worker node IPs                    |
+| `kubeconfig_path`           | Generated kubeconfig path          |
+| `kubeconfig_export_command` | Export command for KUBECONFIG      |
+| `master_ssh_command`        | SSH helper command for master node |
+
+---
+
+## Sensitive Outputs
+
+| Name             |
+| ---------------- |
+| `vm_password`    |
+| `vm_private_key` |
+| `k3s_token`      |
+
+---
+
+## Generated Files
+
+```text id="z8y4ph"
 .generated/
- ├── vm_key.pem
- ├── kubeconfig.yaml
- ├── helmfile.yaml
- └── metallb-config.yaml
+├── kubeconfig.yaml
+├── helmfile.yaml
+├── metallb-config.yaml
+└── vm_key.pem
 ```
 
 ---
 
-## 🚀 Future Improvements (Roadmap)
+## Notes
 
-- Multi-cluster support
-- HA master nodes
-- Terraform provider abstraction for SSH lifecycle
-- Helm-based addon deployment
-- Full GitOps integration
-
----
-
-## 📜 License
-
-MIT
+- Worker cleanup executes automatically during `terraform destroy`
+- Cloud-init readiness is validated before K3s bootstrap
+- Addons are installed using Helmfile
+- MetalLB uses dedicated IP pools instead of full subnet CIDRs
+- Kubeconfig is exported after cluster bootstrap completes
