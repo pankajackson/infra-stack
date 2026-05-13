@@ -20,14 +20,31 @@ resource "null_resource" "worker_cleanup" {
 eval "$(ssh-agent -s)"
 echo "$SSH_KEY" | ssh-add -
 
-ssh -o StrictHostKeyChecking=no \
+MASTER="${self.triggers.ssh_user}@${self.triggers.master_ip}"
+NODE="${self.triggers.node_name}"
+
+SSH_CMD="ssh -o StrictHostKeyChecking=no \
   -o UserKnownHostsFile=/dev/null \
   -o BatchMode=yes \
   -o ConnectTimeout=10 \
   -o ServerAliveInterval=5 \
-  -o ServerAliveCountMax=2 \
-  ${self.triggers.ssh_user}@${self.triggers.master_ip} \
-  "sudo /usr/local/bin/k8s-worker-cleanup.sh ${self.triggers.node_name}"
+  -o ServerAliveCountMax=2"
+
+echo "Checking master availability..."
+
+if ! $SSH_CMD $MASTER "echo ok" >/dev/null 2>&1; then
+  echo "Master already unavailable. Skipping cleanup."
+  exit 0
+fi
+
+echo "Running worker cleanup for $NODE"
+
+
+timeout 180 $SSH_CMD $MASTER \
+  "sudo -n /usr/local/bin/k8s-worker-cleanup.sh $NODE" \
+  || echo "Cleanup interrupted or timed out. Continuing destroy."
+
+echo "Worker cleanup finished"
 
 ssh-agent -k
 EOT
