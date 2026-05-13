@@ -49,7 +49,7 @@ locals {
   # ---- SSH user ----
   ssh_user = "lxa"
 
-# ---- Node packages  ----
+  # ---- Node packages  ----
   default_node_packages = [
     "qemu-guest-agent",
     "curl",
