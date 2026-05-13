@@ -37,11 +37,11 @@ output "k3s_token" {
 }
 
 output "kubeconfig_path" {
-  value = "${path.module}/.generated/kubeconfig.yaml"
+  value = "${path.root}/.generated/kubeconfig.yaml"
 }
 
 output "kubeconfig_export_command" {
-  value = "export KUBECONFIG=${path.module}/.generated/kubeconfig.yaml"
+  value = "export KUBECONFIG=${path.root}/.generated/kubeconfig.yaml"
 }
 
 output "master_ssh_command" {

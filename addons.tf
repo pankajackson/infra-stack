@@ -17,7 +17,7 @@ resource "local_file" "helmfile" {
     headlamp_enabled  = local.headlamp_enabled
     headlamp_hostname = local.headlamp_hostname
   })
-  filename = "${path.module}/.generated/helmfile.yaml"
+  filename = "${path.root}/.generated/helmfile.yaml"
 }
 
 resource "local_file" "metallb_config" {
@@ -27,7 +27,7 @@ resource "local_file" "metallb_config" {
   content = templatefile("${path.module}/templates/kube/metallb-config.yaml", {
     metallb_ipaddress_pool = local.metallb_ipaddress_pool
   })
-  filename = "${path.module}/.generated/metallb-config.yaml"
+  filename = "${path.root}/.generated/metallb-config.yaml"
 }
 
 resource "null_resource" "addons_bootstrap" {
@@ -62,7 +62,7 @@ resource "null_resource" "addons_bootstrap" {
   }
 
   provisioner "file" {
-    source      = "${path.module}/.generated/helmfile.yaml"
+    source      = "${path.root}/.generated/helmfile.yaml"
     destination = "/home/${local.ssh_user}/bootstrap/.generated/helmfile.yaml"
   }
 
@@ -95,7 +95,7 @@ resource "null_resource" "addons_metallb_configurator" {
   }
 
   provisioner "file" {
-    source      = "${path.module}/.generated/metallb-config.yaml"
+    source      = "${path.root}/.generated/metallb-config.yaml"
     destination = "/home/${local.ssh_user}/bootstrap/.generated/metallb-config.yaml"
   }
 
