@@ -229,10 +229,49 @@ apply_metallb_config() {
 }
 
 # -----------------------------------------------------------------------------
+# Arguments
+# -----------------------------------------------------------------------------
+
+SETUP_ADDONS=()
+
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --setup-addons)
+        shift
+
+        while [[ $# -gt 0 ]] && [[ ! "$1" =~ ^-- ]]; do
+          SETUP_ADDONS+=("$1")
+          shift
+        done
+        ;;
+      *)
+        error "Unknown argument: $1"
+        exit 1
+        ;;
+    esac
+  done
+}
+
+addon_enabled() {
+  local addon="$1"
+
+  for enabled_addon in "${SETUP_ADDONS[@]}"; do
+    if [[ "${enabled_addon}" == "${addon}" ]]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+# -----------------------------------------------------------------------------
 # Main
 # -----------------------------------------------------------------------------
 
 main() {
+  parse_args "$@"
+
   ensure_kubectl
   kubectl version --client
 
@@ -248,9 +287,10 @@ main() {
 
   apply_helmfile
 
-  wait_for_metallb_ready
-
-  apply_metallb_config
+  if addon_enabled metallb; then
+    wait_for_metallb_ready
+    apply_metallb_config
+  fi
 
   log "Bootstrap completed successfully"
 }

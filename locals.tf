@@ -105,8 +105,10 @@ locals {
   k3s_extra_args = join(" ", var.k3s.extra_args)
 
   metallb_enabled        = var.addons.metallb.enabled
-  metallb_ipaddress_pool = var.addons.metallb.ipaddress_pool != null ? var.addons.metallb.ipaddress_pool : var.network.cidr
-
+  metallb_ipaddress_pool = coalesce(
+    var.addons.metallb.ipaddress_pool,
+    "${cidrhost(var.network.cidr, 200)}-${cidrhost(var.network.cidr, 250)}"
+  )
   nginx_ingress_enabled         = var.addons.ingress_nginx.enabled
   nginx_ingress_loadbalancer_ip = var.addons.ingress_nginx.loadbalancer_ip
 
@@ -118,5 +120,10 @@ locals {
 
   headlamp_enabled  = var.addons.headlamp.enabled
   headlamp_hostname = var.addons.headlamp.hostname
+
+  addons_enabled = anytrue([
+    for addon in values(var.addons) :
+    try(addon.enabled, false)
+  ])
 
 }

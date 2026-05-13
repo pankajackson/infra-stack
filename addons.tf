@@ -1,4 +1,5 @@
 resource "local_file" "helmfile" {
+  count = local.addons_enabled ? 1 : 0
   depends_on = [null_resource.generated_dir]
 
   content = templatefile("${path.module}/templates/kube/helmfile.yaml", {
@@ -20,6 +21,7 @@ resource "local_file" "helmfile" {
 }
 
 resource "local_file" "metallb_config" {
+  count = local.metallb_enabled ? 1 : 0
   depends_on = [null_resource.generated_dir]
 
   content = templatefile("${path.module}/templates/kube/metallb-config.yaml", {
@@ -29,18 +31,16 @@ resource "local_file" "metallb_config" {
 }
 
 resource "null_resource" "addons_bootstrap" {
+  count = local.addons_enabled ? 1 : 0
+
   depends_on = [
     null_resource.cluster_credentials,
     local_file.helmfile,
-    local_file.metallb_config,
   ]
 
   triggers = {
     cluster_id = local.cluster_id
-
-    helmfile_sha       = sha256(local_file.helmfile.content)
-    metallb_config_sha = sha256(local_file.metallb_config.content)
-    # bootstrap_script_sha = sha256(local_file.bootstrap_script.content)
+    helmfile_sha       = sha256(local_file.helmfile[0].content)
   }
 
   connection {
@@ -66,6 +66,34 @@ resource "null_resource" "addons_bootstrap" {
     destination = "/home/${local.ssh_user}/bootstrap/.generated/helmfile.yaml"
   }
 
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x ~/bootstrap/bootstrap.sh",
+      "cd ~/bootstrap && sudo ROOT_DIR=$(pwd) ./bootstrap.sh"
+    ]
+  }
+}
+
+resource "null_resource" "addons_metallb_configurator" {
+  count = local.metallb_enabled ? 1 : 0
+
+  depends_on = [
+    null_resource.addons_bootstrap,
+    local_file.metallb_config,
+  ]
+
+  triggers = {
+    cluster_id = local.cluster_id
+    helmfile_sha       = sha256(local_file.metallb_config[0].content)
+  }
+
+  connection {
+    type        = "ssh"
+    host        = local.master_ip
+    user        = local.ssh_user
+    private_key = nonsensitive(tls_private_key.vm_key.private_key_pem)
+  }
+
   provisioner "file" {
     source      = "${path.module}/.generated/metallb-config.yaml"
     destination = "/home/${local.ssh_user}/bootstrap/.generated/metallb-config.yaml"
@@ -74,7 +102,7 @@ resource "null_resource" "addons_bootstrap" {
   provisioner "remote-exec" {
     inline = [
       "chmod +x ~/bootstrap/bootstrap.sh",
-      "cd ~/bootstrap && sudo ROOT_DIR=$(pwd) ./bootstrap.sh"
+      "cd ~/bootstrap && sudo ROOT_DIR=$(pwd) ./bootstrap.sh --setup-addons metallb"
     ]
   }
 }

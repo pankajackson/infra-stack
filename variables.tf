@@ -73,10 +73,11 @@ variable "network" {
     }), {})
 
     nfs = optional(object({
-      server = optional(string, "192.168.1.253")
-      path   = optional(string, "/data/lxa_k8s")
-    }), {})
+      server = string
+      path   = string
+    }))
   })
+
   default = {}
 }
 
