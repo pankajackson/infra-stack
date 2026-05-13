@@ -2,17 +2,12 @@ resource "null_resource" "worker_cleanup" {
   count = var.workers.count
 
   triggers = {
-    node_name   = local.worker_names[count.index]
+    node_name = local.worker_names[count.index]
     master_ip   = local.master_ip
     ssh_user    = local.ssh_user
-    private_key = tls_private_key.vm_key.private_key_pem
+    private_key = nonsensitive(tls_private_key.vm_key.private_key_pem)
+    vm_id = proxmox_virtual_environment_vm.lxa-k8s-worker[count.index].id
   }
-
-  # lifecycle {
-  #   replace_triggered_by = [
-  #     time_static.master_identifier
-  #   ]
-  # }
 
   provisioner "local-exec" {
     when = destroy
@@ -22,40 +17,22 @@ resource "null_resource" "worker_cleanup" {
     }
 
     command = <<EOT
-set -euo pipefail
+eval "$(ssh-agent -s)"
+echo "$SSH_KEY" | ssh-add -
 
-mkdir -p .generated
-
-echo "$SSH_KEY" > .generated/vm_key.pem
-chmod 600 .generated/vm_key.pem
-
-MASTER="${self.triggers.ssh_user}@${self.triggers.master_ip}"
-NODE="${self.triggers.node_name}"
-
-SSH_CMD="ssh -i .generated/vm_key.pem \
-  -o StrictHostKeyChecking=no \
+ssh -o StrictHostKeyChecking=no \
   -o UserKnownHostsFile=/dev/null \
   -o BatchMode=yes \
   -o ConnectTimeout=10 \
   -o ServerAliveInterval=5 \
-  -o ServerAliveCountMax=2"
+  -o ServerAliveCountMax=2 \
+  ${self.triggers.ssh_user}@${self.triggers.master_ip} \
+  "sudo /usr/local/bin/k8s-worker-cleanup.sh ${self.triggers.node_name}"
 
-echo "Checking master availability..."
-
-if ! $SSH_CMD $MASTER "echo ok" >/dev/null 2>&1; then
-  echo "Master already unavailable. Skipping cleanup."
-  exit 0
-fi
-
-echo "Running worker cleanup for $NODE"
-
-timeout 180 $SSH_CMD $MASTER \
-  "sudo -n /usr/local/bin/k8s-worker-cleanup.sh $NODE" \
-  || echo "Cleanup interrupted or timed out. Continuing destroy."
-
-echo "Worker cleanup finished"
+ssh-agent -k
 EOT
   }
+
 }
 
 resource "null_resource" "new_worker_lifecycle" {
@@ -65,7 +42,7 @@ resource "null_resource" "new_worker_lifecycle" {
     node_name   = local.worker_names[count.index]
     master_ip   = local.master_ip
     ssh_user    = local.ssh_user
-    private_key = tls_private_key.vm_key.private_key_pem
+    private_key = nonsensitive(tls_private_key.vm_key.private_key_pem)
   }
 
   lifecycle {
