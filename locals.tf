@@ -104,7 +104,7 @@ locals {
 
   k3s_extra_args = join(" ", var.k3s.extra_args)
 
-  metallb_enabled        = var.addons.metallb.enabled
+  metallb_enabled = var.addons.metallb.enabled
   metallb_ipaddress_pool = coalesce(
     var.addons.metallb.ipaddress_pool,
     "${cidrhost(var.network.cidr, 200)}-${cidrhost(var.network.cidr, 250)}"

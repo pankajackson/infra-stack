@@ -84,22 +84,29 @@ terraform {
 ```hcl
 module "k3s" {
   source = "git::https://github.com/pankajackson/terraform-proxmox-k8s.git"
+  proxmox = {
+    node = "proxmox"
+  }
 
   cluster = {
-    name = "lab"
+    name = "k8s-staging"
   }
 
   master = {
-    ip_address = "192.168.1.50"
+    ip_address = "192.168.1.10"
   }
 
   workers = {
-    count = 3
+    count    = 2
   }
 
   network = {
     gateway = "192.168.1.1"
     cidr    = "192.168.1.0/24"
+    nfs = {
+      server = "192.168.1.4"
+      path   = "/volume1/infra-storage/lxa_k8s"
+    }
   }
 }
 ```

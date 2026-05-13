@@ -1,5 +1,5 @@
 resource "local_file" "helmfile" {
-  count = local.addons_enabled ? 1 : 0
+  count      = local.addons_enabled ? 1 : 0
   depends_on = [null_resource.generated_dir]
 
   content = templatefile("${path.module}/templates/kube/helmfile.yaml", {
@@ -21,7 +21,7 @@ resource "local_file" "helmfile" {
 }
 
 resource "local_file" "metallb_config" {
-  count = local.metallb_enabled ? 1 : 0
+  count      = local.metallb_enabled ? 1 : 0
   depends_on = [null_resource.generated_dir]
 
   content = templatefile("${path.module}/templates/kube/metallb-config.yaml", {
@@ -39,8 +39,8 @@ resource "null_resource" "addons_bootstrap" {
   ]
 
   triggers = {
-    cluster_id = local.cluster_id
-    helmfile_sha       = sha256(local_file.helmfile[0].content)
+    cluster_id   = local.cluster_id
+    helmfile_sha = sha256(local_file.helmfile[0].content)
   }
 
   connection {
@@ -83,8 +83,8 @@ resource "null_resource" "addons_metallb_configurator" {
   ]
 
   triggers = {
-    cluster_id = local.cluster_id
-    helmfile_sha       = sha256(local_file.metallb_config[0].content)
+    cluster_id   = local.cluster_id
+    helmfile_sha = sha256(local_file.metallb_config[0].content)
   }
 
   connection {

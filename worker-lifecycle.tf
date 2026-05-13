@@ -2,11 +2,11 @@ resource "null_resource" "worker_cleanup" {
   count = var.workers.count
 
   triggers = {
-    node_name = local.worker_names[count.index]
+    node_name   = local.worker_names[count.index]
     master_ip   = local.master_ip
     ssh_user    = local.ssh_user
     private_key = nonsensitive(tls_private_key.vm_key.private_key_pem)
-    vm_id = proxmox_virtual_environment_vm.lxa-k8s-worker[count.index].id
+    vm_id       = proxmox_virtual_environment_vm.lxa-k8s-worker[count.index].id
   }
 
   provisioner "local-exec" {
