@@ -28,7 +28,7 @@ resource "local_file" "metallb_config" {
   filename = "${path.module}/.generated/metallb-config.yaml"
 }
 
-resource "null_resource" "bootstrap" {
+resource "null_resource" "addons_bootstrap" {
   depends_on = [
     null_resource.cluster_credentials,
     local_file.helmfile,
@@ -47,7 +47,7 @@ resource "null_resource" "bootstrap" {
     type        = "ssh"
     host        = local.master_ip
     user        = local.ssh_user
-    private_key = tls_private_key.vm_key.private_key_pem
+    private_key = nonsensitive(tls_private_key.vm_key.private_key_pem)
   }
 
   provisioner "remote-exec" {
