@@ -377,6 +377,7 @@ Base operating system configuration.
 | `vm_password`    |
 | `vm_private_key` |
 | `k3s_token`      |
+| `kubeconfig`     |
 
 ---
 
