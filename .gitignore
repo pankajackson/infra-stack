@@ -50,3 +50,6 @@ terraform.rc
 .generated/
 *.pem
 *kubeconfig*
+
+# environment files
+*.env
