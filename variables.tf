@@ -5,6 +5,7 @@ variable "cluster" {
     id       = optional(string, null)
     domain   = optional(string, null) # TODO: remove this if we don't need it
     data_dir = optional(string, "/lxa_k8s")
+    tags     = optional(list(string), [])
   })
   default = {}
 }

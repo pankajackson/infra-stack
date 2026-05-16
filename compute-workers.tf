@@ -2,8 +2,8 @@ resource "proxmox_virtual_environment_vm" "lxa-k8s-worker" {
   count = var.workers.count
 
   name        = local.worker_names[count.index]
-  description = "LXA k8s worker node"
-  tags        = ["terraform", "lxa-kube", "worker"]
+  description = "${local.cluster_name} k8s worker node"
+  tags        = concat(coalesce(var.cluster.tags, []), [local.cluster_name, "worker"])
   node_name   = var.proxmox.node
   vm_id       = local.worker_vmids[count.index]
 
