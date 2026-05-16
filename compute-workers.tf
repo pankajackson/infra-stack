@@ -7,7 +7,12 @@ resource "proxmox_virtual_environment_vm" "lxa-k8s-worker" {
   node_name   = var.proxmox.node
   vm_id       = local.worker_vmids[count.index]
 
-
+  lifecycle {
+    replace_triggered_by = [
+      time_static.master_identifier
+    ]
+  }
+  
   agent {
     # read 'Qemu guest agent' section, change to true only when ready
     enabled = true

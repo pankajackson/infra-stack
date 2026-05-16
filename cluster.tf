@@ -103,7 +103,7 @@ resource "local_file" "vm_private_key" {
 
 data "external" "kubeconfig" {
   depends_on = [
-    proxmox_virtual_environment_vm.lxa-k8s-master
+    time_static.master_identifier
   ]
   program = [
     "bash",
