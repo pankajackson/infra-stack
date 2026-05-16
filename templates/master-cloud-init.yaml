@@ -145,10 +145,10 @@ write_files:
 
       data["clusters"][0]["name"] = f"lxa-{cluster_name}"
       data["clusters"][0]["cluster"]["server"] = f"https://{master_ip}:6443"
-      data["contexts"][0]["name"] = "lxa"
+      data["contexts"][0]["name"] = f"lxa-{cluster_name}"
       data["contexts"][0]["context"]["cluster"] = f"lxa-{cluster_name}"
       data["contexts"][0]["context"]["user"] = f"lxa-{cluster_name}-admin"
-      data["current-context"] = "lxa"
+      data["current-context"] = f"lxa-{cluster_name}"
       data["users"][0]["name"] = f"lxa-{cluster_name}-admin"
 
       with open(path, "w") as f:

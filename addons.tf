@@ -34,7 +34,7 @@ resource "null_resource" "addons_bootstrap" {
   count = local.addons_enabled ? 1 : 0
 
   depends_on = [
-    null_resource.cluster_credentials,
+    data.external.kubeconfig,
     local_file.helmfile,
   ]
 
