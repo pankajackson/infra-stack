@@ -48,8 +48,6 @@ resource "proxmox_virtual_environment_file" "master_cloud_init" {
       install_flags  = local.k3s_master_args,
       other_flags    = local.k3s_extra_args
       data_dir       = var.cluster.data_dir,
-      nfs_server     = var.network.nfs.server,
-      nfs_path       = var.network.nfs.path,
     })
 
     file_name = "k8s-master-cloud-init.yaml"
@@ -83,8 +81,6 @@ resource "proxmox_virtual_environment_file" "worker_cloud_init" {
       install_flags  = local.k3s_worker_args,
       other_flags    = local.k3s_extra_args
       data_dir       = var.cluster.data_dir,
-      nfs_server     = var.network.nfs.server,
-      nfs_path       = var.network.nfs.path,
     })
 
     file_name = "k8s-worker-${count.index}-cloud-init.yaml"

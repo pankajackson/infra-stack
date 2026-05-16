@@ -22,14 +22,6 @@ packages:
 %{ endfor ~}
 
 write_files:
-  - path: /usr/local/bin/k3s-shared-storage-setup.sh
-    permissions: "0755"
-    content: |
-      #!/bin/bash
-      mkdir -p ${data_dir}
-      echo "${nfs_server}:${nfs_path} ${data_dir} nfs defaults,_netdev 0 0" >> /etc/fstab
-      mount -a
-
   - path: /usr/local/bin/k3s-worker-setup.sh
     permissions: "0755"
     content: |

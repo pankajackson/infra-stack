@@ -70,10 +70,6 @@ locals {
     var.os.extra_packages
   ))
 
-  # ---- Shared storage ----
-  nfs_server = var.network.nfs.server
-  nfs_path   = var.network.nfs.path
-
   # ---- K3s flags ----
   k3s_disable_flags = compact([
     var.k3s.features.traefik ? null : "--disable traefik",
@@ -134,8 +130,8 @@ locals {
   nginx_ingress_loadbalancer_ip = var.addons.ingress_nginx.loadbalancer_ip
 
   nfs_storage_enabled       = var.addons.nfs_storage.enabled
-  nfs_storage_server        = var.addons.nfs_storage.server != null ? var.addons.nfs_storage.server : var.network.nfs.server
-  nfs_storage_path          = var.addons.nfs_storage.path != null ? var.addons.nfs_storage.path : var.network.nfs.path
+  nfs_storage_server        = try(var.addons.nfs_storage.server, null)
+  nfs_storage_path          = try(var.addons.nfs_storage.path, null)
   nfs_storage_class         = var.addons.nfs_storage.storage_class
   nfs_storage_default_class = var.addons.nfs_storage.default_class
 
