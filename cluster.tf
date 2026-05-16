@@ -1,9 +1,13 @@
-resource "proxmox_download_file" "latest_ubuntu_22_jammy_qcow2_img" {
+resource "proxmox_download_file" "os_image" {
+  count = var.os.image.download ? 1 : 0
+  
   content_type = "import"
   datastore_id = var.os.image.datastore_id
   node_name    = coalesce(var.os.image.node_name, var.proxmox.node)
   url          = var.os.image.url
   file_name    = var.os.image.file_name
+  overwrite = var.os.image.overwrite
+  overwrite_unmanaged = var.os.image.overwrite_unmanaged
 }
 
 resource "random_id" "k3s_token" {
