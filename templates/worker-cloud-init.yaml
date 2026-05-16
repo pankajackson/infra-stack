@@ -35,9 +35,7 @@ write_files:
     content: |
       #!/bin/bash
       set -e
-      config_store_path="${data_dir}/${cluster_name}"
-      JOIN_SCRIPT_PATH="$${config_store_path}/join-${cluster_id}.sh"
-      KUBECONFIG_SRC="$${config_store_path}/kubeconfig-${cluster_id}"
+      KUBECONFIG_SRC="/etc/rancher/k3s/k3s-${cluster_name}-${cluster_id}.yaml"
       KUBECONFIG_DEST="$HOME/.kube/config"
       WAIT_INTERVAL=2
 
@@ -46,13 +44,6 @@ write_files:
       cat <<EOF > /etc/rancher/k3s/config.yaml
       node-name: $(hostname)
       EOF
-
-      wait_for_join_script() {
-          echo "=== Waiting for join script ==="
-          while [ ! -f "$JOIN_SCRIPT_PATH" ]; do
-              sleep "$WAIT_INTERVAL"
-          done
-      }
 
       wait_for_kubeconfig() {
           echo "=== Waiting for kubeconfig ==="
@@ -70,14 +61,10 @@ write_files:
       wait_for_kubeconfig
       setup_kubeconfig
 
-      echo "=== Waiting for join script ==="
-      wait_for_join_script
-
       echo "=== Joining cluster ==="
-      bash "$JOIN_SCRIPT_PATH"
+      curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=${k3s_version} sh -s - agent --token=${k3s_token} --server https://${master_ip}:6443 ${install_flags} ${other_flags}
 
 runcmd:
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent
-  - /usr/local/bin/k3s-shared-storage-setup.sh
   - /usr/local/bin/k3s-worker-setup.sh

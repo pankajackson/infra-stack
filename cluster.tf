@@ -44,7 +44,7 @@ resource "proxmox_virtual_environment_file" "master_cloud_init" {
       ssh_password   = random_password.vm_password.result,
       k3s_token      = coalesce(var.k3s.token, random_id.k3s_token.hex),
       k3s_version    = var.k3s.version,
-      master_address = local.master_ip,
+      master_ip      = local.master_ip,
       install_flags  = local.k3s_master_args,
       other_flags    = local.k3s_extra_args
       data_dir       = var.cluster.data_dir,
@@ -77,6 +77,11 @@ resource "proxmox_virtual_environment_file" "worker_cloud_init" {
       ssh_user       = local.ssh_user
       ssh_public_key = trimspace(tls_private_key.vm_key.public_key_openssh),
       ssh_password   = random_password.vm_password.result,
+      k3s_token      = coalesce(var.k3s.token, random_id.k3s_token.hex),
+      k3s_version    = var.k3s.version,
+      master_ip      = local.master_ip,
+      install_flags  = local.k3s_worker_args,
+      other_flags    = local.k3s_extra_args
       data_dir       = var.cluster.data_dir,
       nfs_server     = var.network.nfs.server,
       nfs_path       = var.network.nfs.path,
@@ -110,9 +115,11 @@ data "external" "kubeconfig" {
   ]
 
   query = {
-    host     = local.master_ip
-    ssh_user = local.ssh_user
-    ssh_key  = tls_private_key.vm_key.private_key_pem
+    host         = local.master_ip
+    ssh_user     = local.ssh_user
+    ssh_key      = tls_private_key.vm_key.private_key_pem
+    cluster_name = local.cluster_name
+    cluster_id   = local.cluster_id
   }
 }
 
