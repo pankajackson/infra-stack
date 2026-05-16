@@ -6,6 +6,10 @@ locals {
   # ---- Network prefix (/24 etc) ----
   network_prefix = split("/", var.network.cidr)[1]
 
+  #  ---- Image file ID  ----
+  os_image_file_id = var.os.image.download ? proxmox_download_file.os_image[0].id : "${var.os.image.datastore_id}:import/${var.os.image.file_name}"
+
+
   # ---- Master IP ----
   master_ip_raw  = var.master.ip_address != null ? var.master.ip_address : cidrhost(var.network.cidr, 60)
   master_ip      = local.master_ip_raw

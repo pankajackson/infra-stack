@@ -35,7 +35,7 @@ resource "proxmox_virtual_environment_vm" "lxa-k8s-master" {
 
   disk {
     datastore_id = var.proxmox.disk_datastore_id
-    import_from  = proxmox_download_file.latest_ubuntu_22_jammy_qcow2_img.id
+    import_from  = local.os_image_file_id
     interface    = "scsi0"
     size         = coalesce(var.master.disk, var.defaults.disk)
   }

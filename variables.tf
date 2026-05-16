@@ -140,10 +140,13 @@ variable "os" {
   description = "Base system configuration"
   type = object({
     image = optional(object({
-      url          = optional(string, "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img")
-      node_name    = optional(string, null)
-      datastore_id = optional(string, "local")
-      file_name    = optional(string, "jammy-server-cloudimg-amd64.qcow2")
+      url                 = optional(string, "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img")
+      node_name           = optional(string, null)
+      datastore_id        = optional(string, "local")
+      file_name           = optional(string, "jammy-server-cloudimg-amd64.qcow2")
+      download            = optional(bool, true)
+      overwrite           = optional(bool, true)
+      overwrite_unmanaged = optional(bool, false)
     }), {})
     extra_packages = optional(list(string), [])
   })
