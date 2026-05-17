@@ -61,7 +61,8 @@ This module provisions:
 
 ```hcl id="6q4k5f"
 module "k3s" {
-  source = "git::https://github.com/pankajackson/terraform-proxmox-k8s.git"
+  source  = "pankajackson/k8s/proxmox"
+  version = "0.0.2"
 
   proxmox = {
     node = "pve"
