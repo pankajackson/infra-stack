@@ -9,7 +9,6 @@ This module provisions:
 - Automatic cluster join and cleanup lifecycle
 - Optional Kubernetes addons
 - Kubeconfig export
-- Shared NFS integration
 - Helmfile-based addon management
 
 ---
@@ -19,13 +18,14 @@ This module provisions:
 - Fully automated K3s cluster provisioning
 - Static IP auto-allocation
 - Cloud-init provisioning
+- Stateful cluster bootstrap using Terraform state
+- Optional reuse of existing Proxmox cloud images
 - Worker lifecycle cleanup during destroy
 - Optional addons:
   - MetalLB
   - NGINX Ingress
   - NFS Storage Class
   - Headlamp
-
 - Automatic kubeconfig export
 - SSH key generation
 - Helmfile-based addon deployment
@@ -69,6 +69,12 @@ module "k3s" {
 
   cluster = {
     name = "lab"
+
+    tags = [
+      "terraform",
+      "k3s",
+      "homelab"
+    ]
   }
 
   workers = {
@@ -78,11 +84,6 @@ module "k3s" {
   network = {
     cidr   = "192.168.1.0/24"
     bridge = "vmbr0"
-
-    nfs = {
-      server = "192.168.1.253"
-      path   = "/data/lxa_k8s"
-    }
   }
 
   addons = {
@@ -91,10 +92,6 @@ module "k3s" {
     }
 
     ingress_nginx = {
-      enabled = true
-    }
-
-    nfs_storage = {
       enabled = true
     }
   }
@@ -110,7 +107,7 @@ Proxmox VE
 ├── K3s Master Node
 ├── K3s Worker Nodes
 ├── Cloud-init Bootstrap
-├── Shared NFS Storage
+├── Terraform State Coordination
 └── Optional Addons
     ├── MetalLB
     ├── NGINX Ingress
@@ -126,12 +123,13 @@ Proxmox VE
 
 Cluster level configuration.
 
-| Name               | Type     | Default      | Description                                         |
-| ------------------ | -------- | ------------ | --------------------------------------------------- |
-| `cluster.name`     | `string` | `"lab"`      | Cluster name                                        |
-| `cluster.id`       | `string` | `null`       | Unique cluster identifier. Auto-generated when null |
-| `cluster.domain`   | `string` | `null`       | Optional DNS domain                                 |
-| `cluster.data_dir` | `string` | `"/lxa_k8s"` | Shared cluster data directory                       |
+| Name               | Type           | Default      | Description                                         |
+| ------------------ | -------------- | ------------ | --------------------------------------------------- |
+| `cluster.name`     | `string`       | `"lab"`      | Cluster name                                        |
+| `cluster.id`       | `string`       | `null`       | Unique cluster identifier. Auto-generated when null |
+| `cluster.domain`   | `string`       | `null`       | Optional DNS domain                                 |
+| `cluster.data_dir` | `string`       | `"/lxa_k8s"` | Cluster working directory                           |
+| `cluster.tags`     | `list(string)` | `[]`         | Tags applied to all Proxmox VMs                     |
 
 ---
 
@@ -161,7 +159,7 @@ Default compute configuration inherited by all nodes.
 
 ### master
 
-K3s server node configuration.
+Master node configuration.
 
 | Name                | Type           | Default           | Description              |
 | ------------------- | -------------- | ----------------- | ------------------------ |
@@ -191,7 +189,7 @@ master IP    = 192.168.1.60
 
 ### workers
 
-K3s worker node configuration.
+Worker node configuration.
 
 | Name               | Type           | Default           | Description                                   |
 | ------------------ | -------------- | ----------------- | --------------------------------------------- |
@@ -237,15 +235,6 @@ Cluster network configuration.
 | `network.bridge`      | `string`       | `"vmbr0"`                    | Proxmox bridge    |
 | `network.dns.servers` | `list(string)` | `["192.168.1.1", "8.8.8.8"]` | DNS servers       |
 | `network.dns.domain`  | `string`       | `null`                       | DNS search domain |
-
-#### network.nfs
-
-Optional shared NFS configuration.
-
-| Name                 | Type     | Required | Description        |
-| -------------------- | -------- | -------- | ------------------ |
-| `network.nfs.server` | `string` | yes      | NFS server address |
-| `network.nfs.path`   | `string` | yes      | NFS export path    |
 
 ---
 
@@ -294,14 +283,11 @@ If no IP pool is specified:
 
 Example:
 
-```text id="q2c6wb"
-network.cidr = 192.168.1.0/24
-
-Generated pool:
+```text
 192.168.1.200-192.168.1.250
 ```
 
-> Do not use full CIDR ranges like `192.168.1.0/24` for MetalLB pools.
+> Do not use full subnet CIDRs like `192.168.1.0/24` for MetalLB pools.
 
 ---
 
@@ -316,13 +302,15 @@ Generated pool:
 
 #### addons.nfs_storage
 
-| Name                               | Type     | Default              | Description                    |
-| ---------------------------------- | -------- | -------------------- | ------------------------------ |
-| `addons.nfs_storage.enabled`       | `bool`   | `false`              | Enable NFS storage provisioner |
-| `addons.nfs_storage.server`        | `string` | `network.nfs.server` | NFS server                     |
-| `addons.nfs_storage.path`          | `string` | `network.nfs.path`   | NFS export path                |
-| `addons.nfs_storage.storage_class` | `string` | `"nfs"`              | StorageClass name              |
-| `addons.nfs_storage.default_class` | `bool`   | `false`              | Set as default StorageClass    |
+| Name                               | Type     | Default | Description                    |
+| ---------------------------------- | -------- | ------- | ------------------------------ |
+| `addons.nfs_storage.enabled`       | `bool`   | `false` | Enable NFS storage provisioner |
+| `addons.nfs_storage.server`        | `string` | `null`  | NFS server address             |
+| `addons.nfs_storage.path`          | `string` | `null`  | NFS export path                |
+| `addons.nfs_storage.storage_class` | `string` | `"nfs"` | StorageClass name              |
+| `addons.nfs_storage.default_class` | `bool`   | `false` | Set as default StorageClass    |
+
+> `addons.nfs_storage.server` and `addons.nfs_storage.path` are required when the addon is enabled.
 
 ---
 
@@ -341,14 +329,32 @@ Base operating system configuration.
 
 #### os.image
 
-| Name                    | Type     | Default                               | Description                          |
-| ----------------------- | -------- | ------------------------------------- | ------------------------------------ |
-| `os.image.url`          | `string` | Ubuntu Jammy cloud image              | Cloud image URL                      |
-| `os.image.node_name`    | `string` | `"proxmox"`                           | Proxmox node used for image download |
-| `os.image.datastore_id` | `string` | `"local"`                             | Proxmox datastore for image storage  |
-| `os.image.file_name`    | `string` | `"jammy-server-cloudimg-amd64.qcow2"` | Downloaded image filename            |
+| Name                           | Type     | Default                               | Description                         |
+| ------------------------------ | -------- | ------------------------------------- | ----------------------------------- |
+| `os.image.url`                 | `string` | Ubuntu Jammy cloud image              | Cloud image URL                     |
+| `os.image.node_name`           | `string` | `null`                                | Proxmox node for image download     |
+| `os.image.datastore_id`        | `string` | `"local"`                             | Proxmox datastore for image storage |
+| `os.image.file_name`           | `string` | `"jammy-server-cloudimg-amd64.qcow2"` | Image filename                      |
+| `os.image.download`            | `bool`   | `true`                                | Download image automatically        |
+| `os.image.overwrite`           | `bool`   | `true`                                | Overwrite managed existing image    |
+| `os.image.overwrite_unmanaged` | `bool`   | `false`                               | Overwrite unmanaged existing image  |
 
-#### os.extra_packages
+### Using Existing Proxmox Images
+
+Disable automatic download to reuse existing images:
+
+```hcl
+os = {
+  image = {
+    download  = false
+    file_name = "jammy-server-cloudimg-amd64.qcow2"
+  }
+}
+```
+
+---
+
+### os.extra_packages
 
 | Name                | Type           | Default | Description                                    |
 | ------------------- | -------------- | ------- | ---------------------------------------------- |
@@ -358,26 +364,66 @@ Base operating system configuration.
 
 ## Outputs
 
-| Name                        | Description                        |
-| --------------------------- | ---------------------------------- |
-| `cluster_name`              | Cluster name                       |
-| `cluster_id`                | Unique cluster ID                  |
-| `master_ip`                 | Master node IP                     |
-| `worker_ips`                | Worker node IPs                    |
-| `kubeconfig_path`           | Generated kubeconfig path          |
-| `kubeconfig_export_command` | Export command for KUBECONFIG      |
-| `master_ssh_command`        | SSH helper command for master node |
+### Cluster
+
+Provisioned cluster information.
+
+```hcl
+output "cluster"
+```
+
+Example:
+
+```hcl
+cluster = {
+  name    = "lab"
+  id      = "abc123"
+  master  = "192.168.1.60"
+  workers = [
+    "192.168.1.61",
+    "192.168.1.62"
+  ]
+}
+```
 
 ---
 
-## Sensitive Outputs
+### Access
 
-| Name             |
-| ---------------- |
-| `vm_password`    |
-| `vm_private_key` |
-| `k3s_token`      |
-| `kubeconfig`     |
+Cluster access information.
+
+```hcl
+output "access"
+```
+
+Example:
+
+```hcl
+access = {
+  kubeconfig_file = ".generated/kubeconfig.yaml"
+  ssh_user        = "ubuntu"
+  ssh_master      = "ubuntu@192.168.1.60"
+}
+```
+
+---
+
+### Secrets
+
+Sensitive cluster credentials and generated secrets.
+
+```hcl
+output "secrets"
+```
+
+Contains:
+
+- VM SSH private key
+- VM password
+- K3s token
+- Generated kubeconfig
+
+> This output is marked as sensitive.
 
 ---
 

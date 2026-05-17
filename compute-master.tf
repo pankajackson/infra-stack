@@ -1,9 +1,10 @@
 resource "proxmox_virtual_environment_vm" "lxa-k8s-master" {
   name        = local.master_name
-  description = "LXA k8s master node"
-  tags        = ["terraform", "lxa-kube", "master"]
-  node_name   = var.proxmox.node
-  vm_id       = local.master_vmid
+  description = "${local.cluster_name} k8s master node"
+  tags        = concat(coalesce(var.cluster.tags, []), [local.cluster_name, "master"])
+
+  node_name = var.proxmox.node
+  vm_id     = local.master_vmid
 
   agent {
     # read 'Qemu guest agent' section, change to true only when ready

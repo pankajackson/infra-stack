@@ -9,8 +9,8 @@ resource "local_file" "helmfile" {
     nginx_ingress_loadbalancer_ip = local.nginx_ingress_loadbalancer_ip
 
     nfs_storage_enabled       = local.nfs_storage_enabled
-    nfs_storage_server        = local.nfs_storage_server
-    nfs_storage_path          = local.nfs_storage_path
+    nfs_storage_server        = local.nfs_storage_server != null ? local.nfs_storage_server : ""
+    nfs_storage_path          = local.nfs_storage_path != null ? local.nfs_storage_path : ""
     nfs_storage_class         = local.nfs_storage_class
     nfs_storage_default_class = local.nfs_storage_default_class
 

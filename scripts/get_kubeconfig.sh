@@ -7,6 +7,8 @@ eval "$(jq -r '
     HOST=\(.host)
     SSH_USER=\(.ssh_user)
     SSH_KEY=\(.ssh_key)
+    CLUSTER_NAME=\(.cluster_name)
+    CLUSTER_ID=\(.cluster_id)
   "
 ')"
 
@@ -62,7 +64,7 @@ retry 60 10 $SSH "cloud-init status --wait >/dev/null 2>&1"
 # -------------------------
 # Wait for kubeconfig
 # -------------------------
-KUBECONFIG_PATH="/etc/rancher/k3s/k3s.yaml"
+KUBECONFIG_PATH="/etc/rancher/k3s/k3s-$CLUSTER_NAME-$CLUSTER_ID.yaml"
 
 echo "Waiting for kubeconfig..." >&2
 retry 60 5 $SSH "sudo test -f $KUBECONFIG_PATH"
@@ -71,7 +73,6 @@ retry 60 5 $SSH "sudo test -f $KUBECONFIG_PATH"
 # Fetch kubeconfig
 # -------------------------
 echo "Fetching kubeconfig..." >&2
-sleep 2
 
 KUBECONFIG=$(
   $SSH "sudo cat $KUBECONFIG_PATH"

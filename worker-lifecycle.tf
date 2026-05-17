@@ -89,3 +89,34 @@ resource "null_resource" "new_worker_lifecycle" {
   }
 
 }
+
+resource "null_resource" "worker_kubeconfig_distribution" {
+  depends_on = [data.external.kubeconfig]
+  count      = var.workers.count
+
+  triggers = {
+    cluster_id  = local.cluster_id
+    kube_config = data.external.kubeconfig.result.kubeconfig
+  }
+
+  connection {
+    type        = "ssh"
+    host        = local.worker_ips[count.index]
+    user        = local.ssh_user
+    private_key = nonsensitive(tls_private_key.vm_key.private_key_pem)
+  }
+  # Upload to temp path first
+  provisioner "file" {
+    content     = data.external.kubeconfig.result.kubeconfig
+    destination = "/tmp/k3s-${local.cluster_name}-${local.cluster_id}.yaml"
+  }
+
+  # Move using sudo
+  provisioner "remote-exec" {
+    inline = [
+      "sudo mkdir -p /etc/rancher/k3s",
+      "sudo mv /tmp/k3s-${local.cluster_name}-${local.cluster_id}.yaml /etc/rancher/k3s/",
+      "sudo chmod 600 /etc/rancher/k3s/k3s-${local.cluster_name}-${local.cluster_id}.yaml"
+    ]
+  }
+}
