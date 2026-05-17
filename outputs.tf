@@ -28,6 +28,6 @@ output "secrets" {
     vm_private_key = tls_private_key.vm_key.private_key_pem
     vm_password    = random_password.vm_password.result
     k3s_token      = random_id.k3s_token.hex
-    kubeconfig     = file("${path.root}/.generated/kubeconfig.yaml")
+    kubeconfig     = data.external.kubeconfig.result.kubeconfig
   }
 }

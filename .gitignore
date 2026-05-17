@@ -49,7 +49,6 @@ terraform.rc
 *.secrets
 .generated/
 *.pem
-*kubeconfig*
 
 # environment files
 *.env

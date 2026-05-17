@@ -79,14 +79,6 @@ write_files:
 
       echo "✅ Cleanup completed for $NODE_NAME"
 
-  - path: /usr/local/bin/k3s-shared-storage-setup.sh
-    permissions: "0755"
-    content: |
-      #!/bin/bash
-      mkdir -p ${data_dir}
-      echo "${nfs_server}:${nfs_path} ${data_dir} nfs defaults,_netdev 0 0" >> /etc/fstab
-      mount -a
-
   - path: /usr/local/bin/k3s-master-setup.sh
     permissions: "0755"
     content: |
@@ -94,7 +86,7 @@ write_files:
       set -e
 
       echo "=== Fetching master ip ==="
-      MASTER_IP=${master_address != "" ? master_address : "$(hostname -I | awk '{print $1}')"}
+      MASTER_IP=${master_ip != "" ? master_ip : "$(hostname -I | awk '{print $1}')"}
 
       echo "=== Setting up k3s config ==="
       mkdir -p /etc/rancher/k3s
@@ -109,18 +101,6 @@ write_files:
       --token="${k3s_token}" \
       --tls-san $${MASTER_IP} \
       ${install_flags} ${other_flags}
-
-      echo "=== Preparing Join Command ==="
-      TOKEN="${k3s_token}"
-      config_store_path="${data_dir}/${cluster_name}"
-      mkdir -p $${config_store_path}
-
-      JOIN_CMD="curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=${k3s_version} sh -s - agent --token=$${TOKEN} --server https://$${MASTER_IP}:6443 ${other_flags}"
-
-      echo "$JOIN_CMD" > $${config_store_path}/join-${cluster_id}.sh
-      chmod +x $${config_store_path}/join-${cluster_id}.sh
-
-      echo "$JOIN_CMD"
 
       echo "=== Setting up Context ==="
 
@@ -138,30 +118,33 @@ write_files:
       master_ip = sys.argv[1]
       cluster_name = sys.argv[2]
 
-      path = "/etc/rancher/k3s/k3s.yaml"
+      default_kube_config_path = "/etc/rancher/k3s/k3s.yaml"
+      lxa_kube_config_path = "/etc/rancher/k3s/k3s-${cluster_name}-${cluster_id}.yaml"
 
-      with open(path, "r") as f:
+      with open(default_kube_config_path, "r") as f:
           data = yaml.safe_load(f)
 
       data["clusters"][0]["name"] = f"lxa-{cluster_name}"
       data["clusters"][0]["cluster"]["server"] = f"https://{master_ip}:6443"
-      data["contexts"][0]["name"] = "lxa"
+      data["contexts"][0]["name"] = f"lxa-{cluster_name}"
       data["contexts"][0]["context"]["cluster"] = f"lxa-{cluster_name}"
       data["contexts"][0]["context"]["user"] = f"lxa-{cluster_name}-admin"
-      data["current-context"] = "lxa"
+      data["current-context"] = f"lxa-{cluster_name}"
       data["users"][0]["name"] = f"lxa-{cluster_name}-admin"
 
-      with open(path, "w") as f:
+      with open(default_kube_config_path, "w") as f:
+          yaml.safe_dump(data, f, default_flow_style=False)
+
+      with open(lxa_kube_config_path, "w") as f:
           yaml.safe_dump(data, f, default_flow_style=False)
       EOF
 
       echo "=== Setting up Kube config ==="
-      k3s kubectl config view --raw > $${config_store_path}/kubeconfig-${cluster_id}
+      # k3s kubectl config view --raw > $${config_store_path}/kubeconfig-${cluster_id}
       mkdir -p /root/.kube
       k3s kubectl config view --raw > /root/.kube/config
 
 runcmd:
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent
-  - /usr/local/bin/k3s-shared-storage-setup.sh
   - /usr/local/bin/k3s-master-setup.sh

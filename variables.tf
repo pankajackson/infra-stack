@@ -5,6 +5,7 @@ variable "cluster" {
     id       = optional(string, null)
     domain   = optional(string, null) # TODO: remove this if we don't need it
     data_dir = optional(string, "/lxa_k8s")
+    tags     = optional(list(string), [])
   })
   default = {}
 }
@@ -71,11 +72,6 @@ variable "network" {
       servers = optional(list(string), ["192.168.1.1", "8.8.8.8"])
       domain  = optional(string, null)
     }), {})
-
-    nfs = optional(object({
-      server = string
-      path   = string
-    }))
   })
 
   default = {}
@@ -98,7 +94,6 @@ variable "k3s" {
   })
   default = {}
 }
-
 variable "addons" {
   description = "Cluster addons"
 
@@ -112,14 +107,13 @@ variable "addons" {
     ingress_nginx = optional(object({
       enabled         = optional(bool, false)
       loadbalancer_ip = optional(string, null)
-      # extra_args = optional(list(string), [])
     }), {})
 
     nfs_storage = optional(object({
       enabled = optional(bool, false)
 
-      server = optional(string, null)
-      path   = optional(string, null)
+      server = optional(string)
+      path   = optional(string)
 
       storage_class = optional(string, "nfs")
       default_class = optional(bool, false)
@@ -134,16 +128,32 @@ variable "addons" {
   })
 
   default = {}
+
+  validation {
+    condition = (
+      !try(var.addons.nfs_storage.enabled, false)
+      ||
+      (
+        try(var.addons.nfs_storage.server, null) != null &&
+        try(var.addons.nfs_storage.path, null) != null
+      )
+    )
+
+    error_message = "addons.nfs_storage.server and addons.nfs_storage.path are required when addons.nfs_storage.enabled is true."
+  }
 }
 
 variable "os" {
   description = "Base system configuration"
   type = object({
     image = optional(object({
-      url          = optional(string, "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img")
-      node_name    = optional(string, null)
-      datastore_id = optional(string, "local")
-      file_name    = optional(string, "jammy-server-cloudimg-amd64.qcow2")
+      url                 = optional(string, "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img")
+      node_name           = optional(string, null)
+      datastore_id        = optional(string, "local")
+      file_name           = optional(string, "jammy-server-cloudimg-amd64.qcow2")
+      download            = optional(bool, true)
+      overwrite           = optional(bool, true)
+      overwrite_unmanaged = optional(bool, false)
     }), {})
     extra_packages = optional(list(string), [])
   })

@@ -6,6 +6,10 @@ locals {
   # ---- Network prefix (/24 etc) ----
   network_prefix = split("/", var.network.cidr)[1]
 
+  #  ---- Image file ID  ----
+  os_image_file_id = var.os.image.download ? proxmox_download_file.os_image[0].id : "${var.os.image.datastore_id}:import/${var.os.image.file_name}"
+
+
   # ---- Master IP ----
   master_ip_raw  = var.master.ip_address != null ? var.master.ip_address : cidrhost(var.network.cidr, 60)
   master_ip      = local.master_ip_raw
@@ -65,10 +69,6 @@ locals {
     local.default_node_packages,
     var.os.extra_packages
   ))
-
-  # ---- Shared storage ----
-  nfs_server = var.network.nfs.server
-  nfs_path   = var.network.nfs.path
 
   # ---- K3s flags ----
   k3s_disable_flags = compact([
@@ -130,8 +130,8 @@ locals {
   nginx_ingress_loadbalancer_ip = var.addons.ingress_nginx.loadbalancer_ip
 
   nfs_storage_enabled       = var.addons.nfs_storage.enabled
-  nfs_storage_server        = var.addons.nfs_storage.server != null ? var.addons.nfs_storage.server : var.network.nfs.server
-  nfs_storage_path          = var.addons.nfs_storage.path != null ? var.addons.nfs_storage.path : var.network.nfs.path
+  nfs_storage_server        = try(var.addons.nfs_storage.server, null)
+  nfs_storage_path          = try(var.addons.nfs_storage.path, null)
   nfs_storage_class         = var.addons.nfs_storage.storage_class
   nfs_storage_default_class = var.addons.nfs_storage.default_class
 

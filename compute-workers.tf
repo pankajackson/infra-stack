@@ -2,12 +2,17 @@ resource "proxmox_virtual_environment_vm" "lxa-k8s-worker" {
   count = var.workers.count
 
   name        = local.worker_names[count.index]
-  description = "LXA k8s worker node"
-  tags        = ["terraform", "lxa-kube", "worker"]
+  description = "${local.cluster_name} k8s worker node"
+  tags        = concat(coalesce(var.cluster.tags, []), [local.cluster_name, "worker"])
   node_name   = var.proxmox.node
   vm_id       = local.worker_vmids[count.index]
 
-
+  lifecycle {
+    replace_triggered_by = [
+      time_static.master_identifier
+    ]
+  }
+  
   agent {
     # read 'Qemu guest agent' section, change to true only when ready
     enabled = true
@@ -38,7 +43,7 @@ resource "proxmox_virtual_environment_vm" "lxa-k8s-worker" {
 
   disk {
     datastore_id = var.proxmox.disk_datastore_id
-    import_from  = proxmox_download_file.latest_ubuntu_22_jammy_qcow2_img.id
+    import_from  = local.os_image_file_id
     interface    = "scsi0"
     size         = coalesce(var.workers.disk, var.defaults.disk)
   }
